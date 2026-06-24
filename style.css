@@ -1,0 +1,873 @@
+﻿/* カラーパレットの制限：原色を完全に廃止し、モノトーンの階調で表現 */
+:root {
+  --bg-color: #000000;
+  --text-color: #E2E8F0;
+  --accent-color: #333333;
+  --accent-hover: #48484A;
+  --panel-bg: #1C1C1E;
+  --border-color: #333333;
+  --error-color: #A1A1AA;
+  --deuce-color: #FFFFFF;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-tap-highlight-color: transparent; }
+
+body {
+  background-color: #000000;
+  color: var(--text-color);
+  font-family: system-ui, -apple-system, sans-serif;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+button, .side-panel, .player-tag {
+  touch-action: manipulation;
+}
+
+.safe-area {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+}
+
+#game-flow-container {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  padding: 20px;
+  background-color: #000000;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.flow-content {
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.flow-title {
+  font-size: 20px !important;
+  font-weight: bold;
+  margin-bottom: 15px !important;
+  letter-spacing: 1px;
+}
+
+.flow-title.step3 {
+  font-size: 13px !important;
+  color: #A1A1AA;
+  margin-top: 5px !important;
+  margin-bottom: 4px !important;
+}
+
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.setting-label {
+  font-size: 16px;
+}
+
+.toggle-group {
+  display: flex;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.toggle-item {
+  background: transparent;
+  color: rgba(255, 255, 255, 0.3);
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: bold;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.toggle-item.selected {
+  background: #333333 !important;
+  color: #ffffff;
+}
+
+.names-container {
+  display: flex;
+  gap: 20px;
+  margin-top: 10px;
+}
+
+.names-column {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.column-title {
+  font-weight: bold;
+  margin-bottom: 10px;
+  font-size: 16px;
+}
+
+.input-field-group {
+  position: relative;
+  margin: 8px 0;
+}
+
+.input-field-group label {
+  position: absolute;
+  top: -8px;
+  left: 10px;
+  background: #000000;
+  padding: 0 5px;
+  font-size: 12px;
+  color: #94A3B8;
+  z-index: 2;
+}
+
+.smart-field {
+  width: 100%;
+  background: transparent;
+  color: #fff;
+  border: 1px solid var(--border-color);
+  padding: 12px 40px 12px 10px;
+  border-radius: 8px;
+  font-size: 14px;
+  outline: none;
+}
+
+.smart-field:focus {
+  border-color: #636366;
+}
+
+.toss-row {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  width: 100%;
+  margin-bottom: 12px !important;
+}
+
+.toss-btn {
+  flex: 1;
+  height: 52px !important; 
+  background: #1C1C1E;
+  color: rgba(255, 255, 255, 0.3);
+  border: 2px solid transparent;
+  border-radius: 12px;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 5px;
+}
+
+.toss-btn.selected {
+  background: #333333 !important;
+  color: #ffffff;
+}
+
+.choice-box {
+  width: 100% !important;
+  max-width: 320px !important;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  padding: 8px 12px !important;
+  margin: 0 auto 10px auto !important;
+}
+
+.choice-grid {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin: 4px 0 !important;
+}
+
+.choice-btn {
+  flex: 1;
+  height: 38px !important; 
+  background: #1C1C1E;
+  color: rgba(255, 255, 255, 0.3);
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.choice-btn.selected {
+  background: #333333 !important;
+  color: #ffffff;
+}
+
+.action-btn {
+  min-width: 200px;
+  height: 48px !important;
+  background: #2C2C2E !important;
+  color: #fff;
+  border: 1px solid #48484A;
+  border-radius: 30px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  margin-top: 12px !important;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+}
+
+.back-nav-bar {
+  text-align: center;
+  padding-bottom: 20px;
+  margin-top: auto !important;
+  width: 100%;
+}
+
+.back-text-btn {
+  background: transparent;
+  color: rgba(255,255,255,0.24);
+  border: none;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+#board-ui {
+  display: none;
+  flex-direction: column;
+  flex-grow: 1;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background-color: #000000;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.board-call-cheat-sheet {
+  background-color: rgba(28, 28, 30, 0.8);
+  border-radius: 12px;
+  margin: max(10px, env(safe-area-inset-top)) 10px 0 10px !important;
+  padding: 5px 65px !important; 
+  z-index: 10;
+  height: 140px !important; 
+  flex-shrink: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important; 
+  width: calc(100% - 20px) !important;
+  box-sizing: border-box;
+}
+
+.board-call-en { 
+  font-size: clamp(0.95rem, 3.8vw, 1.25rem) !important;
+  white-space: normal !important;
+  word-wrap: break-word !important;
+  line-height: 1.3 !important;
+  text-align: center;
+  font-weight: bold; 
+  color: #fff; 
+  letter-spacing: 1px; 
+  width: 100%; 
+}
+
+.board-call-kana { 
+  font-size: clamp(0.75rem, 3vw, 0.9rem) !important;
+  white-space: normal !important;
+  word-wrap: break-word !important;
+  line-height: 1.3 !important;
+  color: #A1A1AA;
+  text-align: center;
+  margin-top: 4px !important; 
+  font-weight: bold; 
+  width: 100%; 
+}
+
+.top-icon-btn {
+  position: absolute;
+  top: max(10px, env(safe-area-inset-top));
+  height: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: rgba(255,255,255,0.7);
+  cursor: pointer;
+  z-index: 50;
+  padding: 0;
+  transition: opacity 0.2s;
+}
+
+/* GAME PREPARATION表示時などに裏のボタンを隠す安全クラス */
+.top-icon-btn.hidden-by-overlay {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+.top-icon-btn svg {
+  width: 28px;
+  height: 28px;
+  fill: currentColor;
+}
+
+#btn-undo { left: 10px; width: 45px; }
+#btn-redo { left: 55px; width: 45px; }
+#btn-close { right: 10px; width: 45px; }
+
+.board-layout {
+  display: flex;
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+}
+
+.side-panel {
+  flex: 1;
+  height: 100%;
+  border: 1px solid rgba(255,255,255,0.06);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+
+.side-header-space {
+  height: 40px;
+  margin-top: 15px;
+  width: 100%;
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.side-title-text {
+  font-weight: bold;
+  font-size: 19px;
+  text-align: center;
+  white-space: pre-wrap;
+}
+
+.tags-container {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  align-items: center;
+  width: 100%;
+}
+
+.player-tag {
+  width: 80%;
+  max-width: 100%;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 4px solid transparent; 
+  background-color: transparent;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 18px;
+  font-weight: bold;
+  color: rgba(255,255,255,0.7);
+  transition: all 0.2s;
+}
+
+.player-tag.server {
+  border: 4px solid #FFFFFF !important;
+  background-color: rgba(255, 255, 255, 0.15) !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.4) !important;
+}
+
+.player-tag.receiver {
+  border: 4px dashed rgba(255, 255, 255, 0.6);
+  color: #FFFFFF;
+}
+
+.game-dots-row {
+  margin-top: 15px;
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+.game-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: rgba(255,255,255,0.12);
+}
+
+.score-container {
+  flex-grow: 1;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.score-box-wrapper {
+  width: 100%;
+  max-width: none;
+  text-align: center;
+}
+
+.score-number {
+  font-size: clamp(4rem, 20vw, 8.5rem) !important;
+  font-weight: bold;
+  color: #FFFFFF;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.score-number.deuce {
+  color: #FFFFFF;
+  text-shadow: 0 0 15px rgba(255, 255, 255, 0.8), 0 0 30px rgba(255, 255, 255, 0.4);
+}
+
+.announcement-text {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  text-align: center;
+  color: #FFFFFF;
+  font-weight: bold;
+  font-size: 16px;
+  letter-spacing: 1.2px;
+  text-shadow: 0 2px 10px #000000;
+  white-space: nowrap;
+}
+
+#role-selection-overlay {
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background-color: rgba(0,0,0,0.87);
+  backdrop-filter: blur(5px);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.start-match-btn {
+  min-width: 200px;
+  height: 60px;
+  background-color: #2C2C2E !important;
+  color: #fff;
+  border: 1px solid #48484A;
+  border-radius: 30px;
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+  /* ★構想3：GAME STARTボタンを下へ押し下げ、背景の0-0と被るように調整 */
+  margin-top: auto; 
+  margin-bottom: 10px;
+}
+
+.bottom-banner-container {
+  display: none;
+  position: absolute;
+  top: 50% !important;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 90%;
+  max-width: 450px;
+  background-color: #1C1C1E;
+  border: 1px solid #48484A;
+  border-radius: 16px;
+  padding: 20px;
+  text-align: center;
+  z-index: 110;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.8);
+}
+
+.banner-msg {
+  font-size: 18px;
+  color: #FFFFFF;
+  font-weight: bold;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  margin-bottom: 5px;
+}
+
+.banner-details {
+  font-size: 16px;
+  color: #FFFFFF;
+  font-weight: bold;
+  margin-bottom: 5px;
+  white-space: pre-wrap;
+}
+
+.banner-notice {
+  color: #A1A1AA;
+  font-size: 12px;
+  margin-bottom: 15px;
+}
+
+.banner-notice:not(:empty) {
+  color: #FFFFFF;
+  font-size: 14px;
+  font-weight: bold;
+  letter-spacing: 1.5px;
+  padding: 10px 0;
+  margin-top: 10px;
+  border-top: 1px solid #48484A;
+  border-bottom: 1px solid #48484A;
+  background-color: rgba(255, 255, 255, 0.02);
+}
+
+.banner-action-btn {
+  background-color: #2C2C2E !important;
+  color: #fff;
+  border: 1px solid #48484A;
+  min-width: 180px;
+  height: 45px;
+  border-radius: 4px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.4);
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+  body {
+    position: fixed !important;
+    top: 50% !important;
+    left: 50% !important;
+    width: 100dvh !important;
+    height: 100vw !important;
+    transform: translate(-50%, -50%) rotate(-90deg) !important;
+    transform-origin: center !important;
+    overflow: hidden !important;
+  }
+}
+
+/* =========================================
+   ROSTER (名簿) モーダル用スタイル
+========================================= */
+#roster-overlay, #player-select-overlay {
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background-color: rgba(0,0,0,0.87);
+  backdrop-filter: blur(5px);
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.roster-modal {
+  width: 100%;
+  max-width: 500px;
+  background: #1C1C1E;
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  margin-top: max(20px, env(safe-area-inset-top));
+  border: 1px solid #333333;
+  position: relative;
+}
+
+.roster-close-icon-btn {
+  position: absolute;
+  right: 15px;
+  top: 15px;
+  background: transparent;
+  border: none;
+  color: rgba(255,255,255,0.7);
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.2s;
+}
+
+.roster-close-icon-btn svg {
+  width: 28px;
+  height: 28px;
+  fill: currentColor;
+}
+
+.roster-header {
+  font-size: 18px;
+  font-weight: bold;
+  text-align: center;
+  margin-bottom: 20px;
+  color: #E2E8F0;
+  letter-spacing: 1px;
+}
+
+.roster-input-area {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.roster-field {
+  background: rgba(0,0,0,0.5) !important;
+}
+
+.roster-add-btn {
+  margin-top: 5px !important;
+  min-width: unset;
+  height: 44px !important;
+  font-size: 14px;
+  background: #333333 !important;
+}
+
+.roster-cancel-btn {
+  margin-top: 5px !important;
+  min-width: unset;
+  height: 44px !important;
+  font-size: 14px;
+  background: transparent !important;
+  border: 1px solid #48484A !important;
+  color: #A1A1AA !important;
+}
+
+.roster-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+  max-height: 50vh;
+}
+
+.roster-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(255,255,255,0.03);
+  padding: 12px 15px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  transition: background 0.2s;
+}
+
+.roster-item-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.roster-item-name {
+  font-size: 16px;
+  font-weight: bold;
+  color: #FFFFFF;
+}
+
+.roster-item-team {
+  font-size: 12px;
+  color: #94A3B8;
+  margin-top: 2px;
+}
+
+.roster-edit-btn {
+  background: transparent;
+  color: #E2E8F0;
+  border: 1px solid #48484A;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.roster-delete-btn {
+  background: transparent;
+  color: #A1A1AA;
+  border: 1px solid #333333;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.roster-select-btn {
+  width: 100%;
+  text-align: left;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid #333333;
+  cursor: pointer;
+  padding: 12px 15px;
+}
+
+.roster-select-btn:active {
+  background: rgba(255,255,255,0.1);
+}
+
+.select-icon-btn {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  color: #A1A1AA;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.select-icon-btn svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+}
+
+textarea.smart-field {
+  padding: 10px !important;
+}
+
+#roster-bulk-area .action-btn { margin-top: 0 !important; }
+
+/* =========================================
+   GAME PREPARATION (左右分割レイアウト) 用スタイル
+========================================= */
+.role-split-container { display: flex; width: 100%; gap: 15px; margin-bottom: 30px; }
+.role-split-side { flex: 1; display: flex; flex-direction: column; align-items: center; background: rgba(255, 255, 255, 0.03); border-radius: 12px; padding: 15px 10px; border: 1px solid #333333; }
+
+/* ★構想2：トグルモードのタッチフィードバック演出（タップ時に少し光って沈み込む） */
+.role-split-side.toggle-mode { transition: background-color 0.2s, transform 0.1s; }
+.role-split-side.toggle-mode:active { background-color: rgba(255, 255, 255, 0.1) !important; transform: scale(0.98); }
+
+.role-split-side .role-picker-title { color: rgba(255, 255, 255, 0.8); font-size: 15px; font-weight: bold; margin-bottom: 15px; text-align: center; line-height: 1.3; }
+.role-split-side .role-picker-row { display: flex; flex-direction: column; gap: 12px; width: 100%; }
+.role-picker-btn { width: 100%; height: 48px; background-color: #1C1C1E; color: rgba(255, 255, 255, 0.3); border: 1px solid #333333; border-radius: 8px; font-size: 14px; cursor: pointer; font-weight: bold; }
+.role-picker-btn.selected { background-color: #333333 !important; color: #ffffff !important; border-color: #48484A; box-shadow: 0 2px 4px rgba(0,0,0,0.3); }
+
+/* =========================================
+   ルールカンペ ＆ 設定モーダル用スタイル
+========================================= */
+.board-format-info {
+  text-align: center;
+  font-size: 11px;
+  color: #636366; 
+  padding: 8px 10px 12px 10px;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+  width: 100%;
+  flex-shrink: 0;
+  pointer-events: none; 
+}
+
+.flow-header-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  width: 100%;
+}
+
+.flow-header-actions .toggle-item {
+  margin: 0 !important;
+}
+
+.setting-icon-btn {
+  background: transparent;
+  border: none;
+  color: #94A3B8;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px;
+  transition: color 0.2s;
+}
+
+.setting-icon-btn:active {
+  color: #FFFFFF;
+}
+
+.setting-icon-btn svg {
+  width: 24px;
+  height: 24px;
+  fill: currentColor;
+}
+
+.setting-modal-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.setting-modal-label {
+  font-size: 14px;
+  color: #E2E8F0;
+  font-weight: bold;
+}
+
+/* PLAYERS画面：左右入れ替えボタン */
+.swap-sides-btn {
+  background: rgba(255, 255, 255, 0.05);
+  color: #E2E8F0;
+  border: 1px solid #333333;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.2s;
+}
+.swap-sides-btn:active {
+  background: rgba(255, 255, 255, 0.1);
+}
+.swap-sides-btn svg {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+}
+
+/* TOSS画面：WINNER/LOSERの実際の名前表示 */
+.toss-name-label {
+  font-size: 16px;
+  font-weight: bold;
+  color: #FFFFFF;
+  text-align: center;
+  margin-top: 2px;
+  margin-bottom: 12px;
+  line-height: 1.3;
+  word-break: break-all;
+}

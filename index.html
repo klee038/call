@@ -1,0 +1,197 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Call</title>
+
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon.png">
+<meta name="theme-color" content="#000000">
+
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="pdf-style.css">
+
+<script src="html2pdf.bundle.min.js" defer></script>
+<script src="pdf.js" defer></script>
+<script src="recorder.js" defer></script>
+
+<script src="roster.js" defer></script>
+<script src="game.js" defer></script>
+<script src="setup.js" defer></script>
+<script src="toss.js" defer></script>
+<script src="role.js" defer></script>
+<script src="history.js" defer></script>
+<script src="call.js" defer></script>
+<script src="ui.js" defer></script>
+</head>
+<body>
+
+<div class="safe-area">
+  <div id="game-flow-container">
+    <div class="flow-content" id="flow-content-area"></div>
+    <div class="back-nav-bar" id="back-nav-bar" style="display: none;">
+      <button class="back-text-btn" onclick="flowBack()">BACK</button>
+    </div>
+  </div>
+
+  <div id="board-ui">
+    <div class="board-call-cheat-sheet">
+        <div class="board-call-en" id="board-call-en">Love All; Play.</div>
+        <div class="board-call-kana" id="board-call-kana">ラブオール；プレイ</div>
+    </div>
+    
+    <button class="top-icon-btn" id="btn-undo" style="z-index: 1000;" onclick="boardUndo()"><svg viewBox="0 0 24 24"><path d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z"/></svg></button>
+    <button class="top-icon-btn" id="btn-redo" style="z-index: 1000; color: rgba(255,255,255,0.15); pointer-events: none;" onclick="boardRedo()"><svg viewBox="0 0 24 24"><path d="M18.4 10.6C16.55 8.99 14.15 8 11.5 8c-4.65 0-8.58 3.03-9.96 7.22L3.9 16c1.05-3.19 4.05-5.5 7.6-5.5 1.95 0 3.73.72 5.12 1.88L13 16h9V7l-3.6 3.6z"/></svg></button>
+    
+    <button class="top-icon-btn" id="btn-recorder" style="right: 55px; width: 45px; z-index: 1000;" onclick="generatePDF(JSON.parse(localStorage.getItem('call_active_backup')) || {})">
+      <svg viewBox="0 0 24 24"><path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+    </button>
+    <button class="top-icon-btn" id="btn-close" style="z-index: 1000;" onclick="boardClose()"><svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>
+
+    <div class="board-layout">
+      <div class="side-panel" onclick="scoreAdd(true)">
+        <div class="side-header-space"><div class="side-title-text" id="title-text-L"></div></div>
+        <div class="tags-container" id="tags-container-L"></div>
+        <div class="game-dots-row" id="game-dots-L"></div>
+        <div class="score-container">
+          <div class="score-box-wrapper">
+             <div class="announcement-text" id="ann-text-L"></div>
+             <div class="score-number" id="score-val-L">0</div>
+          </div>
+        </div>
+      </div>
+      <div class="side-panel" onclick="scoreAdd(false)">
+        <div class="side-header-space"><div class="side-title-text" id="title-text-R"></div></div>
+        <div class="tags-container" id="tags-container-R"></div>
+        <div class="game-dots-row" id="game-dots-R"></div>
+        <div class="score-container">
+          <div class="score-box-wrapper">
+             <div class="announcement-text" id="ann-text-R"></div>
+             <div class="score-number" id="score-val-R">0</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="board-format-info" id="board-format-info"></div>
+  </div>
+</div>
+
+<div id="role-selection-overlay" style="display: none;">
+  <div class="flow-title" id="role-overlay-title" style="margin-top:20px;"></div>
+  <div style="color:#A1A1AA; font-size:14px; margin-bottom:30px;" id="role-overlay-subtitle"></div>
+  <div class="role-split-container" id="role-split-container">
+    <div class="role-split-side">
+      <div class="role-picker-title" id="role-picker-title-L"></div>
+      <div class="role-picker-row" id="role-picker-row-L"></div>
+    </div>
+    <div class="role-split-side">
+      <div class="role-picker-title" id="role-picker-title-R"></div>
+      <div class="role-picker-row" id="role-picker-row-R"></div>
+    </div>
+  </div>
+  <button class="start-match-btn" id="role-overlay-confirm-btn" onclick="confirmRoles()"></button>
+  
+  <div class="back-nav-bar" style="margin-top: 30px;">
+    <button class="back-text-btn" onclick="roleBack()">BACK</button>
+  </div>
+</div>
+
+<div id="bottom-banner" class="bottom-banner-container">
+  <div class="banner-msg" id="banner-msg-field"></div>
+  <div class="banner-details" id="banner-details-field"></div>
+  <div class="banner-notice" id="banner-notice-field"></div>
+  <button class="banner-action-btn" id="banner-action-trigger" onclick="handleBannerTap()"></button>
+</div>
+
+<div id="roster-overlay" style="display: none;">
+  <div class="roster-modal">
+    <button class="roster-close-icon-btn" onclick="closeRosterModal()">
+      <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+    </button>
+    <div class="roster-header">ROSTER</div>
+    
+    <div style="display:flex; border-bottom: 1px solid #333333; margin-bottom: 20px;">
+      <button id="roster-tab-single" class="toggle-item selected" style="flex:1; border-radius:0;" onclick="switchRosterMode('single')">SINGLE ADD</button>
+      <button id="roster-tab-bulk" class="toggle-item" style="flex:1; border-radius:0;" onclick="switchRosterMode('bulk')">BULK ADD</button>
+    </div>
+
+    <div id="roster-single-area" class="roster-input-area">
+      <div class="input-field-group">
+        <label>Player Name</label>
+        <input type="text" id="roster-player-name" class="smart-field roster-field" placeholder="名前を入力">
+      </div>
+      <div class="input-field-group">
+        <label>Team</label>
+        <input type="text" id="roster-team-name" class="smart-field roster-field" placeholder="チーム名 (任意)">
+      </div>
+      <button id="roster-submit-btn" class="action-btn roster-add-btn" onclick="addPlayerToRoster()">ADD PLAYER</button>
+      <button id="roster-cancel-edit-btn" class="action-btn roster-cancel-btn" style="display:none;" onclick="cancelRosterEdit()">CANCEL EDIT</button>
+    </div>
+
+    <div id="roster-bulk-area" class="roster-input-area" style="display:none;">
+      <div class="input-field-group">
+        <label>一括指定用チーム名</label>
+        <input type="text" id="roster-bulk-team-name" class="smart-field roster-field" placeholder="全員に付けるチーム名 (任意)">
+      </div>
+      <div class="input-field-group">
+        <label>Paste from Excel / CSV</label>
+        <textarea id="roster-bulk-text" class="smart-field roster-field" rows="4" placeholder="名前&#10;名前&#10;..."></textarea>
+      </div>
+      <button class="action-btn roster-add-btn" onclick="addBulkPlayersToRoster()">ADD ALL</button>
+    </div>
+
+    <div class="input-field-group" style="margin-bottom:15px;">
+      <label>Search by Team</label>
+      <input type="text" id="roster-search-team" class="smart-field roster-field" placeholder="チーム名で絞り込み" oninput="renderRosterList()">
+      <button class="select-icon-btn" onclick="openTeamSelectModal('roster-search-team')"><svg viewBox="0 0 24 24"><path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"/></svg></button>
+    </div>
+
+    <div id="roster-list" class="roster-list"></div>
+
+    <div style="display:flex; justify-content: space-between; margin-top: 15px; border-top: 1px solid #333; padding-top: 15px;">
+      <button class="roster-delete-btn" style="color: #EF4444; border-color: #EF4444;" onclick="deleteFilteredTeamRoster()">チーム一括削除</button>
+      <button class="roster-delete-btn" style="color: #EF4444; border-color: #EF4444;" onclick="clearAllRoster()">名簿を全削除</button>
+    </div>
+  </div>
+</div>
+
+<div id="player-select-overlay" style="display: none;">
+  <div class="roster-modal">
+    <div class="roster-header">SELECT</div>
+    <div id="player-select-list" class="roster-list" style="max-height: 60vh;"></div>
+    <div style="text-align: center; margin-top: 20px; width: 100%;">
+      <button class="action-btn roster-cancel-btn" style="min-width: 160px; height: 44px !important; margin-top: 0 !important; display: inline-block;" onclick="closePlayerSelectModal()">CANCEL</button>
+    </div>
+  </div>
+</div>
+
+<div id="setting-overlay" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.87); backdrop-filter: blur(5px); z-index: 300; align-items: center; justify-content: center; padding: 20px; overflow-y: auto;">
+  <div style="width: 100%; max-width: 450px; background: #1C1C1E; border-radius: 12px; padding: 20px; border: 1px solid #333333; position: relative;">
+    <button class="roster-close-icon-btn" onclick="closeSettingModal()">
+      <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+    </button>
+    <div class="roster-header" style="margin-bottom: 20px;">SETTINGS</div>
+    <div id="setting-modal-content"></div>
+  </div>
+</div>
+
+<div id="history-overlay" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.87); backdrop-filter: blur(5px); z-index: 300; align-items: center; justify-content: center; padding: 20px; overflow-y: auto;">
+  <div style="width: 100%; max-width: 500px; background: #1C1C1E; border-radius: 12px; padding: 20px; border: 1px solid #333333; position: relative;">
+    <button class="roster-close-icon-btn" onclick="closeHistoryModal()">
+      <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+    </button>
+    <div class="roster-header" style="margin-bottom: 20px;">MATCH HISTORY</div>
+    <div id="history-modal-content" class="roster-list" style="max-height: 60vh; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;"></div>
+  </div>
+</div>
+
+<script>
+  if ('serviceWorker' in navigator && window.location.protocol !== 'file:') {
+    navigator.serviceWorker.register('sw.js').catch(function() {});
+  }
+</script>
+
+</body>
+</html>
