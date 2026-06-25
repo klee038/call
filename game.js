@@ -17,21 +17,24 @@ let redoStack = [];
 let justAfterInterval = false;
 let initialTL = "", initialTR = "";
 let initialNL1 = "";
-let initialNL2 = "", initialNR1 = "", initialNR2 = "";
+// ★修正箇所：削除されてしまっていた変数を安全のため完全復旧
+let initialNL2 = "", initialNR1 = "", initialNR2 = ""; 
 let matchScoreHistory = [];
 let matchDefaultRole = {};
 
+// ★機能プラス：一球ごとの得点経過をPDF用に記録するタイムライン配列
 let matchTimeline = [];
 
 function resetNames() {
   flowStep = 1;
   tossWinner = null; winnerChoice = null; loserChoice = null;
   txtTL = ""; txtTR = "";
+  // ★構想3：2マッチ目以降も名前初期値を完全に透明化（空文字列）して維持
   txtPL1 = ""; txtPL2 = "";
   txtPR1 = ""; txtPR2 = "";
   initialTL = ""; initialTR = "";
   initialNL1 = "";
-  initialNL2 = ""; initialNR1 = ""; initialNR2 = "";
+  initialNL2 = ""; initialNR1 = ""; initialNR2 = ""; // ★復旧
   matchScoreHistory = [];
   matchDefaultRole = {};
   matchTimeline = [];
@@ -60,16 +63,20 @@ function resetNames() {
 }
 
 function overlayBack() {
-  if (hist.length === 0) {
+  // ★修正：0-0の画面から戻る場合は、履歴がゼロであっても必ず GAME PREPARATION を経由させる
+  if (sL === 0 && sR === 0 && !isOver && !isSelectingRoles) {
+    if (typeof boardUndo === 'function') boardUndo();
+  } else if (hist.length === 0) {
     flowPrev();
   } else {
     if (typeof boardUndo === 'function') boardUndo();
   }
 }
 
+// ★構想1：GAME PREPARATION画面の順当な戻るリレーを実現する関数
 function roleBack() {
   if (gL === 0 && gR === 0 && hist.length === 0) {
-    // 1ゲーム目の開始時：TOSS画面に戻る
+    // 最初のゲーム開始前なら、TOSS画面（flowStep=3）に美しく戻る
     isSelectingRoles = false;
     document.getElementById("role-selection-overlay").style.display = "none";
     document.getElementById("board-ui").style.display = "none";
@@ -77,16 +84,14 @@ function roleBack() {
     flowStep = 3;
     if (typeof renderFlow === 'function') renderFlow();
   } else {
-    // ゲーム間の場合：確実にUIを消してからUNDO処理へ移行し、バナー等に戻る
-    isSelectingRoles = false;
-    document.getElementById("role-selection-overlay").style.display = "none";
+    // 第2ゲーム以降の開始前なら、前ゲームの最終スコア盤面にUndoで戻る
     if (typeof boardUndo === 'function') boardUndo();
   }
 }
 
 function finalizeAndStart() {
   initialTL = txtTL; initialTR = txtTR; initialNL1 = txtPL1; 
-  initialNL2 = txtPL2; initialNR1 = txtPR1; initialNR2 = txtPR2;
+  initialNL2 = txtPL2; initialNR1 = txtPR1; initialNR2 = txtPR2; // ★復旧
   matchScoreHistory = []; matchTimeline = []; justAfterInterval = false;
 
   let swapCourts = (tossWinner === 'L' && (winnerChoice === 'RIGHT' || loserChoice === 'LEFT')) ||
@@ -118,9 +123,11 @@ function finalizeAndStart() {
   document.getElementById("game-flow-container").style.display = "none";
   document.getElementById("board-ui").style.display = "flex";
 
+  // ★片方だけのチーム名入力でも両方が消えないように、それぞれ独立して文字列をセットする
   tL = tL ? tL.trim() : "";
   tR = tR ? tR.trim() : "";
 
+  // ★機能プラス：公式記録員（PDFノート）に初期配置を報告・ロック
   if (typeof Recorder !== 'undefined') {
     Recorder.initMatch(flowIsDouble, tL, tR, nL1, nL2, nR1, nR2);
   }
@@ -137,53 +144,27 @@ function scoreAdd(isLeft) {
 
   annL = ""; annR = ""; ceNotice = "";
 
-  // PDF記録員への報告。点数が入った側の「次にサーブを打つ選手」を算出する
-  let targetPlayerName = "";
+  // ★機能プラス：PDF記録員への報告用に「今のサーバー」を特定
+  let serverName = "";
+  if (typeof Recorder !== 'undefined') {
+    if (!flowIsDouble) {
+        serverName = srvL ? nL1 : nR1;
+    } else {
+        if (srvL) {
+            serverName = ((sL % 2 === 0) === pL1IsRight) ? nL1 : nL2;
+        } else {
+            serverName = ((sR % 2 === 0) === pR1IsRight) ? nR1 : nR2;
+        }
+    }
+  }
   
   if (isLeft) {
-    let isContinuous = srvL; 
-    let nextScore = sL + 1;
-    
-    if (!flowIsDouble) {
-      targetPlayerName = nL1;
-    } else {
-      if (isContinuous) {
-         // ★修正箇所: 連続得点時は「直前のスコア」の偶奇から、今打った人をそのまま特定する
-         let currentServeFromRight = (sL % 2 === 0);
-         targetPlayerName = currentServeFromRight ? (pL1IsRight ? nL1 : nL2) : (pL1IsRight ? nL2 : nL1);
-      } else {
-         // ★修正箇所: サービスオーバー時は「次のスコア」の偶奇から、次に打つ人を特定する
-         let nextServeFromRight = (nextScore % 2 === 0);
-         targetPlayerName = nextServeFromRight ? (pL1IsRight ? nL1 : nL2) : (pL1IsRight ? nL2 : nL1);
-      }
-    }
-    
-    if (typeof Recorder !== 'undefined') Recorder.recordPoint(gL + gR, targetPlayerName, nextScore);
-    
+    if (typeof Recorder !== 'undefined') Recorder.recordPoint(gL + gR, serverName, sL + 1);
     if (srvL && flowIsDouble) pL1IsRight = !pL1IsRight;
     sL++; srvL = true;
     matchTimeline.push({ game: gL + gR + 1, team: 'L', score: `${sL}-${sR}` });
-    
   } else {
-    let isContinuous = !srvL;
-    let nextScore = sR + 1;
-    
-    if (!flowIsDouble) {
-      targetPlayerName = nR1;
-    } else {
-      if (isContinuous) {
-         // ★修正箇所: 連続得点時は「直前のスコア」の偶奇から、今打った人をそのまま特定する
-         let currentServeFromRight = (sR % 2 === 0);
-         targetPlayerName = currentServeFromRight ? (pR1IsRight ? nR1 : nR2) : (pR1IsRight ? nR2 : nR1);
-      } else {
-         // ★修正箇所: サービスオーバー時は「次のスコア」の偶奇から、次に打つ人を特定する
-         let nextServeFromRight = (nextScore % 2 === 0);
-         targetPlayerName = nextServeFromRight ? (pR1IsRight ? nR1 : nR2) : (pR1IsRight ? nR2 : nR1);
-      }
-    }
-    
-    if (typeof Recorder !== 'undefined') Recorder.recordPoint(gL + gR, targetPlayerName, nextScore);
-    
+    if (typeof Recorder !== 'undefined') Recorder.recordPoint(gL + gR, serverName, sR + 1);
     if (!srvL && flowIsDouble) pR1IsRight = !pR1IsRight;
     sR++; srvL = false;
     matchTimeline.push({ game: gL + gR + 1, team: 'R', score: `${sL}-${sR}` });
@@ -258,18 +239,10 @@ function scoreAdd(isLeft) {
 }
 
 function gameEndCore(leftWon) {
+  // ★機能プラス：PDF記録員へゲーム終了と最終スコアを報告
   if (typeof Recorder !== 'undefined') {
      let finalScore = leftWon ? sL : sR;
-     let winnerName = "";
-     if (!flowIsDouble) {
-         winnerName = leftWon ? nL1 : nR1;
-     } else {
-         if (leftWon) {
-             winnerName = pL1IsRight ? nL1 : nL2;
-         } else {
-             winnerName = pR1IsRight ? nR1 : nR2;
-         }
-     }
+     let winnerName = leftWon ? nL1 : nR1;
      Recorder.recordGameEnd(gL + gR, winnerName, finalScore);
   }
 
@@ -318,16 +291,22 @@ function gameEndCore(leftWon) {
 }
 
 function handleBannerTap() {
+  // ★セーフティネット追加：FINISHが押された時、どんなエラーが起きても絶対に初期画面に戻る処理を保証する
   if (isOver) {
-    if (typeof saveMatchToHistory === 'function') saveMatchToHistory("FINISHED");
-    document.getElementById("board-ui").style.display = "none";
-    document.getElementById("game-flow-container").style.display = "flex";
-    flowStep = 1;
-    tossWinner = null; winnerChoice = null; loserChoice = null;
-    
-    resetNames();
-    if (typeof triggerBannerDisplay === 'function') triggerBannerDisplay(false);
-    if (typeof renderFlow === 'function') renderFlow();
+    try {
+      if (typeof saveMatchToHistory === 'function') saveMatchToHistory("FINISHED");
+    } catch (e) {
+      console.error("履歴保存エラー:", e); // エラーを検知してもストップさせない
+    } finally {
+      document.getElementById("board-ui").style.display = "none";
+      document.getElementById("game-flow-container").style.display = "flex";
+      flowStep = 1;
+      tossWinner = null; winnerChoice = null; loserChoice = null;
+      
+      try { resetNames(); } catch (e) { console.error("初期化エラー:", e); }
+      if (typeof triggerBannerDisplay === 'function') triggerBannerDisplay(false);
+      if (typeof renderFlow === 'function') renderFlow();
+    }
     return;
   }
 
@@ -434,6 +413,9 @@ function getBannerName(isL) {
   }
 }
 
+// =========================================
+// ★機能プラス：セーブ・ロード・履歴保存用 データ管理関数
+// =========================================
 function saveActiveBackup() {
   if (flowStep < 3) return; 
   let stateData = {
@@ -441,7 +423,8 @@ function saveActiveBackup() {
     sL, sR, gL, gR, srvL, tL, tR, nL1, nL2, nR1, nR2,
     pL1IsRight, pR1IsRight, isOver, needsOverlay, ivDoneInThisGame, isSelectingRoles,
     overlayMsg, resultDetails, ceNotice, annL, annR, shownCountL, shownCountR, justAfterInterval,
-    initialTL, initialTR, initialNL1, initialNL2, initialNR1, initialNR2, matchScoreHistory, matchDefaultRole, matchTimeline,
+    initialTL, initialTR, initialNL1, initialNL2, initialNR1, initialNR2, // ★復旧
+    matchScoreHistory, matchDefaultRole, matchTimeline,
     hist, redoStack,
     recorderData: (typeof Recorder !== 'undefined') ? Recorder.exportData() : null 
   };
@@ -481,7 +464,8 @@ function saveMatchToHistory(status) {
     sL, sR, gL, gR, srvL, tL, tR, nL1, nL2, nR1, nR2,
     pL1IsRight, pR1IsRight, isOver, needsOverlay, ivDoneInThisGame, isSelectingRoles,
     overlayMsg, resultDetails, ceNotice, annL, annR, shownCountL, shownCountR, justAfterInterval,
-    initialTL, initialTR, initialNL1, initialNL2, initialNR1, initialNR2, matchScoreHistory, matchDefaultRole, matchTimeline,
+    initialTL, initialTR, initialNL1, initialNL2, initialNR1, initialNR2, // ★復旧
+    matchScoreHistory, matchDefaultRole, matchTimeline,
     hist, redoStack,
     recorderData: (typeof Recorder !== 'undefined') ? Recorder.exportData() : null
   };
