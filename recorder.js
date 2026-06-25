@@ -84,10 +84,9 @@ const Recorder = {
     // ゲームの点数設定とデュースの条件を取得
     let limit = flowMaxPoints || 21;
     let hasSetting = flowHasSetting !== undefined ? flowHasSetting : true;
-    let deucePt = limit - 1;
+    let deucePt = limit - 1; // 15点マッチなら14点
     let scoreL = 0;
     let scoreR = 0;
-    let deuceMarkerInserted = false;
 
     let gameTimeline = timeline.filter(t => t.gameIdx === gameIdx);
 
@@ -98,36 +97,56 @@ const Recorder = {
         
         if (sR >= 0 && sR < rowsCount) {
           table[sR][0] = "S";
-          table[sR][1] = "0"; // ★修正①：サーバーの1マス目に0を記録
+          table[sR][1] = "0"; 
         }
         if (rR >= 0 && rR < rowsCount) {
           table[rR][0] = "R";
-          table[rR][1] = "0"; // ★修正①：レシーバーの1マス目に0を記録
+          table[rR][1] = "0"; 
         }
       } else if (action.type === 'POINT') {
         let r = action.serverRow;
         if (r >= 0 && r < rowsCount) {
-          table[r][globalCol] = action.score;
-          globalCol++;
           
-          // 両チームのスコアを追跡
           let isLeft = (r === 0 || r === 1);
+          
           if (isLeft) scoreL = action.score;
           else scoreR = action.score;
           
-          // ★修正③：デュースポイント(20-20など)に到達した瞬間、1列まるごと斜線マーカーを挿入
-          if (hasSetting && !deuceMarkerInserted && scoreL === deucePt && scoreR === deucePt) {
-            for (let i = 0; i < rowsCount; i++) {
-              table[i][globalCol] = "SLASH";
-            }
-            globalCol++;
-            deuceMarkerInserted = true;
+          let isUnderline = false;
+          if (hasSetting && scoreL >= deucePt && scoreR >= deucePt) {
+              isUnderline = true;
           }
+          
+          let val = action.score.toString();
+          
+          if (isUnderline) {
+              val = "U_" + val;
+          }
+          
+          table[r][globalCol] = val;
+          globalCol++;
         }
       } else if (action.type === 'WIN_SCORE') {
         let r = action.winnerRow;
         if (r >= 0 && r < rowsCount) {
-          table[r][globalCol] = "W_" + action.score;
+          
+          // ★修正箇所：最後の1点（WIN_SCORE）に対してもデュース判定を行う
+          let isLeft = (r === 0 || r === 1);
+          if (isLeft) scoreL = action.score;
+          else scoreR = action.score;
+          
+          let isUnderline = false;
+          if (hasSetting && scoreL >= deucePt && scoreR >= deucePt) {
+              isUnderline = true;
+          }
+          
+          let val = action.score.toString();
+          
+          if (isUnderline) {
+              val = "U_" + val;
+          }
+          
+          table[r][globalCol] = "W_" + val;
           globalCol++;
         }
       }

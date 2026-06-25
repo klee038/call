@@ -40,7 +40,7 @@ function generatePDF(state) {
   const getGameRowsHTML = (gameIndex, gameLabelStr) => {
     let tableData = [];
     if (typeof Recorder !== 'undefined' && state.recorderData) {
-        // ★修正：点数設定とデュース有無を渡し、SLASHを正確に検知させる
+        // デュース目印(U_)が付与されたクリーンなデータを取得
         tableData = Recorder.generateTableData(state.recorderData, gameIndex, state.flowMaxPoints, state.flowHasSetting);
     } else {
         tableData = Array.from({length: 4}, () => new Array(68).fill("")); 
@@ -53,6 +53,22 @@ function generatePDF(state) {
     // 各ゲームの最終スコアを取得（進行中の場合は空欄）
     let gameFinalL = histStrs[gameIndex] ? histStrs[gameIndex].a : "";
     let gameFinalR = histStrs[gameIndex] ? histStrs[gameIndex].b : "";
+
+    // ★修正箇所：最終スコアに対するデュース判定と下線の付与
+    let limit = state.flowMaxPoints || 21;
+    let deucePt = limit - 1;
+    let hasSetting = state.flowHasSetting !== undefined ? state.flowHasSetting : true;
+    
+    let displayFinalL = gameFinalL;
+    let displayFinalR = gameFinalR;
+    
+    if (hasSetting && gameFinalL !== "" && gameFinalR !== "") {
+        // 両者の最終スコアがデュースポイントに達していれば、文字に下線を引く
+        if (gameFinalL >= deucePt && gameFinalR >= deucePt) {
+            displayFinalL = `<span style="border-bottom: 1px solid #000000; padding-bottom: 2px; display: inline-block; line-height: 1;">${gameFinalL}</span>`;
+            displayFinalR = `<span style="border-bottom: 1px solid #000000; padding-bottom: 2px; display: inline-block; line-height: 1;">${gameFinalR}</span>`;
+        }
+    }
 
     for (let r = 0; r < 8; r++) {
       let isUpper = (r < 4); 
@@ -78,7 +94,6 @@ function generatePDF(state) {
       }
 
       let startCol = isUpper ? 1 : 34; 
-      // 下段のラリーマスは31マスで止め、残り2列分を最終スコア枠にする
       let rallyCellCount = isUpper ? 33 : 31;
 
       for (let c = 0; c < rallyCellCount; c++) { 
@@ -89,25 +104,27 @@ function generatePDF(state) {
             cellVal = cellVal.replace("W_", "");
         }
         
-        // デュース時の斜線マーカー判定
-        let isSlash = (tableData[0] && tableData[0][colIndex] === "SLASH");
+        let contentHtml = cellVal;
         
-        if (isSlash) {
-          // 4行ぶち抜きの斜線セルを描画するため、一番上の行(r=0 or r=4)の時だけtdを出力（他はスキップ）
-          if (playerRowIndex === 0) {
-             rowsHtml += `<td rowspan="4" class="deuce-slash-col"></td>`;
-          }
-        } else {
-           rowsHtml += `<td class="rally-cell">${cellVal}</td>`;
+        // データが「U_」から始まっていれば、下線を引いて出力する
+        if (typeof cellVal === 'string' && cellVal.startsWith("U_")) {
+            let actualNumber = cellVal.replace("U_", "");
+            // アンダーラインを引く（枠のギリギリ下ではなく、文字のすぐ下に引く）
+            contentHtml = `<span style="border-bottom: 1px solid #000000; padding-bottom: 1px; display: inline-block; line-height: 1;">${actualNumber}</span>`;
         }
+        
+        let preFinalClass = (!isUpper && c === rallyCellCount - 1) ? " pre-final-score" : "";
+        
+        // 列を詰める処理などを一切廃止。ただシンプルにマスを出力するだけ。
+        rowsHtml += `<td class="rally-cell${preFinalClass}">${contentHtml}</td>`;
       }
 
-      // ★修正箇所②：下段の最後の2列に最終スコア専用の大きな枠を配置し、CSSで罫線を制御しやすいよう個別のクラスを付与
+      // 下段の最後の2列に最終スコア専用の大きな枠を配置
       if (!isUpper) {
           if (r === 4) {
-              rowsHtml += `<td rowspan="2" colspan="2" class="final-score-box final-score-top">${gameFinalL}</td>`;
+              rowsHtml += `<td rowspan="2" colspan="2" class="final-score-box final-score-top">${displayFinalL}</td>`;
           } else if (r === 6) {
-              rowsHtml += `<td rowspan="2" colspan="2" class="final-score-box final-score-bottom">${gameFinalR}</td>`;
+              rowsHtml += `<td rowspan="2" colspan="2" class="final-score-box final-score-bottom">${displayFinalR}</td>`;
           }
       }
 
@@ -117,6 +134,7 @@ function generatePDF(state) {
     return rowsHtml;
   };
 
+  // 1つのテーブル内に3ゲームすべてを出力する（不要な隙間が発生しません）
   let allGamesHTML = `
     <div class="game-section">
       <table class="game-table">

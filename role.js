@@ -4,20 +4,19 @@
 
 function initRoleSelectionOverlay() {
   const overlay = document.getElementById("role-selection-overlay");
+  
+  // game.js側でシングルスの場合はisSelectingRoles=falseに設定済のため、ここで処理を抜ける
   if (!isSelectingRoles) {
     if (overlay) overlay.style.display = "none";
     return;
   }
 
-  // シングルスの場合は選択画面を完全にスキップして即試合開始
+  // 万が一シングルスでここに来た場合は何もしない（game.jsで裏側記録するため）
   if (!flowIsDouble) {
-    pL1IsRight = true; 
-    pR1IsRight = true;
-    confirmRoles(); // 即座に確定処理へ移行
+    if (overlay) overlay.style.display = "none";
     return;
   }
 
-  // ダブルスの場合は通常通り選択画面を表示する
   if (overlay) overlay.style.display = "flex";
 
   const titleEl = document.getElementById("role-overlay-title");
@@ -26,12 +25,10 @@ function initRoleSelectionOverlay() {
   const confirmBtn = document.getElementById("role-overlay-confirm-btn");
 
   if (titleEl) titleEl.innerText = "GAME PREPARATION";
-  // ★構想2：案内文を「リストから選ぶ」から「タップで反転する」内容へ最適化
   if (subtitleEl) subtitleEl.innerText = "初期配置を確認し、必要に応じてタップで左右を入れ替えてください";
   if (splitContainer) splitContainer.style.display = "flex";
   if (confirmBtn) confirmBtn.innerText = "GAME START";
 
-  // ★構想2：ui.jsと全く同じ計算で「現在の実際のコート配置とサーバー/レシーバー状態」を算出し、そのままボタンとして描画する
   let boxFarNameL = pL1IsRight ? nL2 : nL1;
   let boxNearNameL = pL1IsRight ? nL1 : nL2;
   let boxFarClassL = ""; let boxNearClassL = "";
@@ -66,7 +63,6 @@ function initRoleSelectionOverlay() {
   let roleL = srvL ? 'SERVER' : 'RECEIVER';
   let roleR = !srvL ? 'SERVER' : 'RECEIVER';
 
-  // ★構想2：左右のブロック全体を「1つの巨大なプレビュー兼トグルボタン」として再構築
   if (splitContainer) {
     splitContainer.innerHTML = `
       <div class="role-split-side toggle-mode" onclick="toggleRole('L')" style="cursor: pointer; position: relative; transition: background 0.2s;">
@@ -104,21 +100,17 @@ function initRoleSelectionOverlay() {
   }
 }
 
-/**
- * ★新規追加：タップされた側の左右の選手を単純に入れ替えて再描画する
- */
 function toggleRole(side) {
   if (side === 'L') {
     pL1IsRight = !pL1IsRight;
   } else {
     pR1IsRight = !pR1IsRight;
   }
-  initRoleSelectionOverlay(); // オーバーレイ内の表示を即時更新
-  if (typeof syncBoardDOM === 'function') syncBoardDOM(); // 背景の0-0スコア板も即時同期させて違和感を消す
+  initRoleSelectionOverlay(); 
+  if (typeof syncBoardDOM === 'function') syncBoardDOM(); 
 }
 
 function confirmRoles() {
-  // 毎ゲームの0-0（ゲーム開始時）に確定した「選択された人の名前」を次のゲームのデフォルトとして記憶する
   if (sL === 0 && sR === 0) {
     let selL = pL1IsRight ? nL1 : nL2;
     let selR = pR1IsRight ? nR1 : nR2;
@@ -131,7 +123,6 @@ function confirmRoles() {
     }
   }
 
-  // ★機能プラス：公式記録員（PDFノート）に最初のサーバーとレシーバーを報告する処理
   if (typeof Recorder !== 'undefined') {
     let serverName = "";
     let receiverName = "";

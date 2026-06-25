@@ -328,15 +328,17 @@
 
 
 /* =========================================
-   ★今回追加：デュースの斜線と最終スコア枠
+   デュースの斜線（CSSグラデーション）と最終スコア枠
 ========================================= */
 
-/* デュース突入時の斜線（1列＝4マス分を貫通） */
+/* デュース突入時の斜線（グラデーションの境界を限りなく0にして鋭い直線を表現） */
 .deuce-slash-col {
-  background-image: linear-gradient(to bottom right, transparent calc(50% - 0.5px), #000000 calc(50% - 0.5px), #000000 calc(50% + 0.5px), transparent calc(50% + 0.5px));
+  background: linear-gradient(to top right, transparent 49.5%, #000000 49.5%, #000000 50.5%, transparent 50.5%);
+  /* Webkit系（Safari/Chrome）での描画最適化 */
+  -webkit-print-color-adjust: exact;
 }
 
-/* 斜線セル（rowspan=4）が、4行ごとの太線（下部）指定をすり抜けてしまう分を再指定して補填 */
+/* 合体セル（rowspan=4）が、4行ごとの太線（下部）指定をすり抜けてしまう分を再指定して補填 */
 .game-table tr:nth-child(1) .deuce-slash-col,
 .game-table tr:nth-child(9) .deuce-slash-col,
 .game-table tr:nth-child(17) .deuce-slash-col {
@@ -357,7 +359,12 @@
   vertical-align: middle;
 }
 
-/* ★修正箇所：最終得点枠の上段（左チーム）: 上・左・右を太線、下を普通線に */
+/* 最終得点欄の左側の線がズレるのを防ぐため、直前のマスの右側を強制的に太線にする */
+.pre-final-score {
+  border-right: 2px solid #000000 !important;
+}
+
+/* 最終得点枠の上段（左チーム）: 上・左・右を太線、下を普通線に */
 .final-score-top {
   border-top: 2px solid #000000 !important;
   border-left: 2px solid #000000 !important;
@@ -365,7 +372,7 @@
   border-bottom: 1px solid #000000 !important;
 }
 
-/* ★修正箇所：最終得点枠の下段（右チーム）: 左・右・下を太線に */
+/* 最終得点枠の下段（右チーム）: 左・右・下を太線に */
 .final-score-bottom {
   border-left: 2px solid #000000 !important;
   border-right: 2px solid #000000 !important;

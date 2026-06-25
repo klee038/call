@@ -108,12 +108,19 @@ function finalizeAndStart() {
 
   sL = 0; sR = 0; gL = 0; gR = 0;
   isOver = false; needsOverlay = false; ivDoneInThisGame = false;
+  
+  if (!flowIsDouble) {
+    isSelectingRoles = false; 
+  } else {
+    isSelectingRoles = true; 
+  }
+  
   overlayMsg = ""; resultDetails = ""; ceNotice = ""; annL = ""; annR = "";
   shownCountL = 0; shownCountR = 0;
   hist = [];
   redoStack = []; 
 
-  pL1IsRight = pR1IsRight = true; isSelectingRoles = flowIsDouble;
+  pL1IsRight = pR1IsRight = true; 
   document.getElementById("game-flow-container").style.display = "none";
   document.getElementById("board-ui").style.display = "flex";
 
@@ -124,7 +131,18 @@ function finalizeAndStart() {
     Recorder.initMatch(flowIsDouble, tL, tR, nL1, nL2, nR1, nR2);
   }
 
-  if (typeof initRoleSelectionOverlay === 'function') initRoleSelectionOverlay();
+  if (!flowIsDouble) {
+    if (typeof Recorder !== 'undefined') {
+      let sName = srvL ? nL1 : nR1;
+      let rName = srvL ? nR1 : nL1;
+      Recorder.recordFirstSR(gL + gR, sName, rName);
+    }
+  }
+
+  if (isSelectingRoles) {
+    if (typeof initRoleSelectionOverlay === 'function') initRoleSelectionOverlay();
+  }
+  
   if (typeof syncBoardDOM === 'function') syncBoardDOM();
   if (typeof saveActiveBackup === 'function') saveActiveBackup();
 }
@@ -136,7 +154,6 @@ function scoreAdd(isLeft) {
 
   annL = ""; annR = ""; ceNotice = "";
 
-  // ★修正箇所①：得点とサーブ権を更新した「直後」の新しいサーバーを特定してPDF記録員に送信する
   if (isLeft) {
     if (srvL && flowIsDouble) pL1IsRight = !pL1IsRight;
     sL++; srvL = true;
@@ -244,7 +261,14 @@ function gameEndCore(leftWon) {
   if (leftWon) gL++; else gR++;
   let winTarget = Math.floor((flowMaxGames + 1) / 2);
 
-  let isInitialLeftNowLeft = (nL1 === initialNL1);
+  // ★修正箇所：最終スコアが逆転しないように、ダブルスで立ち位置が入れ替わっていても正しくチームを判定する
+  let isInitialLeftNowLeft = false;
+  if (!flowIsDouble) {
+      isInitialLeftNowLeft = (nL1 === initialNL1);
+  } else {
+      isInitialLeftNowLeft = (nL1 === initialNL1 || nL1 === initialNL2);
+  }
+  
   let aScore = isInitialLeftNowLeft ? sL : sR;
   let bScore = isInitialLeftNowLeft ? sR : sL;
   matchScoreHistory.push({ a: aScore, b: bScore });
@@ -255,8 +279,15 @@ function gameEndCore(leftWon) {
     overlayMsg = "MATCH WON BY\n" + (isL ? (typeof getBannerName === 'function' ? getBannerName(true) : "") : (typeof getBannerName === 'function' ? getBannerName(false) : ""));
     
     let matchScoreStr = isL ? `${gL}-${gR}` : `${gR}-${gL}`;
-    let matchWinnerPlayer1 = isL ? nL1 : nR1;
-    let winnerIsInitialLeft = (matchWinnerPlayer1 === initialNL1);
+    
+    // ★マッチ終了後のダイアログ表示用チーム判定も同様に修正
+    let isLeftWinnerInitialLeft = false;
+    if (!flowIsDouble) {
+        isLeftWinnerInitialLeft = (nL1 === initialNL1);
+    } else {
+        isLeftWinnerInitialLeft = (nL1 === initialNL1 || nL1 === initialNL2);
+    }
+    let winnerIsInitialLeft = isL ? isLeftWinnerInitialLeft : !isLeftWinnerInitialLeft;
     
     let historyStrs = matchScoreHistory.map(game => {
         if (winnerIsInitialLeft) {
@@ -317,6 +348,11 @@ function handleBannerTap() {
     if (!flowIsDouble) {
       pL1IsRight = true; pR1IsRight = true;
       isSelectingRoles = false;
+      if (typeof Recorder !== 'undefined') {
+        let sName = srvL ? nL1 : nR1;
+        let rName = srvL ? nR1 : nL1;
+        Recorder.recordFirstSR(gL + gR, sName, rName);
+      }
     } else {
       if (matchDefaultRole.hasOwnProperty('initialLeftTeamSelectedPlayer') && matchDefaultRole.initialLeftTeamSelectedPlayer !== "") {
         if (nL1 === initialNL1) {
@@ -332,7 +368,9 @@ function handleBannerTap() {
       isSelectingRoles = true;  
     }
     justAfterInterval = false;
-    if (typeof initRoleSelectionOverlay === 'function') initRoleSelectionOverlay();
+    if (isSelectingRoles) {
+      if (typeof initRoleSelectionOverlay === 'function') initRoleSelectionOverlay();
+    }
   } else if (overlayMsg === "INTERVAL" || overlayMsg === "CHANGE ENDS") {
     if (shouldSwap && typeof boardSwap === 'function') {
       boardSwap();
@@ -427,7 +465,6 @@ function clearActiveBackup() {
 }
 
 function saveMatchToHistory(status) {
-  // ★修正箇所③：FINISHで終了する時だけは、膨大な容量を食うUndoデータを空っぽにしてから履歴に保存する
   if (status === "FINISHED") {
     hist = [];
     redoStack = [];
@@ -450,7 +487,13 @@ function saveMatchToHistory(status) {
   let gameDetails = matchScoreHistory.map(g => `${g.a}-${g.b}`).join(', ');
   
   if (status === "INTERRUPTED") {
-    let isInitialLeftNowLeft = (nL1 === initialNL1);
+    // ★ここも同様に修正
+    let isInitialLeftNowLeft = false;
+    if (!flowIsDouble) {
+        isInitialLeftNowLeft = (nL1 === initialNL1);
+    } else {
+        isInitialLeftNowLeft = (nL1 === initialNL1 || nL1 === initialNL2);
+    }
     let aScore = isInitialLeftNowLeft ? sL : sR;
     let bScore = isInitialLeftNowLeft ? sR : sL;
     gameDetails += (gameDetails ? ", " : "") + `(${aScore}-${bScore} 途中)`;
@@ -467,7 +510,7 @@ function saveMatchToHistory(status) {
     recorderData: (typeof Recorder !== 'undefined') ? Recorder.exportData() : null
   };
 
-  historyList.unshift({
+  let newItem = {
     id: now.getTime().toString(),
     date: dateStr,
     title: matchTitle,
@@ -475,8 +518,20 @@ function saveMatchToHistory(status) {
     score: matchScoreStr,
     details: gameDetails,
     state: stateData
-  });
+  };
 
-  localStorage.setItem('call_match_history', JSON.stringify(historyList));
+  historyList.unshift(newItem);
+
+  let savedSuccessfully = false;
+  while (!savedSuccessfully && historyList.length > 0) {
+    try {
+      localStorage.setItem('call_match_history', JSON.stringify(historyList));
+      savedSuccessfully = true;
+    } catch(e) {
+      console.warn("ストレージ容量上限のため、一番古い履歴を削除して保存を再試行します。");
+      historyList.pop(); 
+    }
+  }
+
   clearActiveBackup();
 }
