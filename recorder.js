@@ -69,17 +69,25 @@ const Recorder = {
   },
 
   /**
-   * PDF出力用：指定ゲームの「4行 × 68列」のマス目データを生成する
+   * PDF出力用：指定ゲームのマス目データを生成する
    */
-  generateTableData: function(savedData, gameIdx) {
+  generateTableData: function(savedData, gameIdx, flowMaxPoints, flowHasSetting) {
     let timeline = savedData ? savedData.timeline : this.data.timeline;
     let rowsCount = 4;
     
-    // ★修正箇所：68列(上段34マス＋下段34マス)の空配列を4行分つくる（4列追加分）
+    // 68列(上段34マス＋下段34マス)の空配列を4行分つくる
     let table = Array.from({length: rowsCount}, () => new Array(68).fill(""));
     
-    // ラリーは2列目(index:2)から進行する
+    // ラリーは2列目(index:2)から進行する（index:0はS/R、index:1は初期スコア0）
     let globalCol = 2; 
+
+    // ゲームの点数設定とデュースの条件を取得
+    let limit = flowMaxPoints || 21;
+    let hasSetting = flowHasSetting !== undefined ? flowHasSetting : true;
+    let deucePt = limit - 1;
+    let scoreL = 0;
+    let scoreR = 0;
+    let deuceMarkerInserted = false;
 
     let gameTimeline = timeline.filter(t => t.gameIdx === gameIdx);
 
@@ -88,13 +96,33 @@ const Recorder = {
         let sR = action.serverRow;
         let rR = action.receiverRow;
         
-        if (sR >= 0 && sR < rowsCount) table[sR][0] = "S";
-        if (rR >= 0 && rR < rowsCount) table[rR][0] = "R";
+        if (sR >= 0 && sR < rowsCount) {
+          table[sR][0] = "S";
+          table[sR][1] = "0"; // ★修正①：サーバーの1マス目に0を記録
+        }
+        if (rR >= 0 && rR < rowsCount) {
+          table[rR][0] = "R";
+          table[rR][1] = "0"; // ★修正①：レシーバーの1マス目に0を記録
+        }
       } else if (action.type === 'POINT') {
         let r = action.serverRow;
         if (r >= 0 && r < rowsCount) {
           table[r][globalCol] = action.score;
           globalCol++;
+          
+          // 両チームのスコアを追跡
+          let isLeft = (r === 0 || r === 1);
+          if (isLeft) scoreL = action.score;
+          else scoreR = action.score;
+          
+          // ★修正③：デュースポイント(20-20など)に到達した瞬間、1列まるごと斜線マーカーを挿入
+          if (hasSetting && !deuceMarkerInserted && scoreL === deucePt && scoreR === deucePt) {
+            for (let i = 0; i < rowsCount; i++) {
+              table[i][globalCol] = "SLASH";
+            }
+            globalCol++;
+            deuceMarkerInserted = true;
+          }
         }
       } else if (action.type === 'WIN_SCORE') {
         let r = action.winnerRow;

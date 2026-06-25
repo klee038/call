@@ -14,7 +14,7 @@ function generatePDF(state) {
   let tLName = state.initialTL || state.tL || "";
   let tRName = state.initialTR || state.tR || "";
   
-  // ★修正箇所：常に「試合開始時の初期配置の選手名」を利用する
+  // 常に「試合開始時の初期配置の選手名」を利用する
   let nL1 = state.initialNL1 || state.nL1 || "";
   let nL2 = isDouble ? (state.initialNL2 || state.nL2 || "") : "";
   let nR1 = state.initialNR1 || state.nR1 || "";
@@ -40,27 +40,30 @@ function generatePDF(state) {
   const getGameRowsHTML = (gameIndex, gameLabelStr) => {
     let tableData = [];
     if (typeof Recorder !== 'undefined' && state.recorderData) {
-        tableData = Recorder.generateTableData(state.recorderData, gameIndex);
+        // ★修正：点数設定とデュース有無を渡し、SLASHを正確に検知させる
+        tableData = Recorder.generateTableData(state.recorderData, gameIndex, state.flowMaxPoints, state.flowHasSetting);
     } else {
-        tableData = Array.from({length: 4}, () => new Array(68).fill("")); // ★修正：60マスから68マスへ拡張
+        tableData = Array.from({length: 4}, () => new Array(68).fill("")); 
     }
 
     let label = gameLabelStr === "1" ? "第<br>一<br>ゲ<br>｜<br>ム" : gameLabelStr === "2" ? "第<br>二<br>ゲ<br>｜<br>ム" : "第<br>三<br>ゲ<br>｜<br>ム";
     let rowsHtml = "";
     let players = [nL1, nL2, nR1, nR2];
 
+    // 各ゲームの最終スコアを取得（進行中の場合は空欄）
+    let gameFinalL = histStrs[gameIndex] ? histStrs[gameIndex].a : "";
+    let gameFinalR = histStrs[gameIndex] ? histStrs[gameIndex].b : "";
+
     for (let r = 0; r < 8; r++) {
       let isUpper = (r < 4); 
       let playerRowIndex = r % 4; 
       
-      // ゲーム同士の境界線を引くためのクラス
       let rowClass = "";
       if (r === 3) rowClass = ' class="upper-last-row"';
       if (r === 7) rowClass = ' class="game-last-row"';
 
       rowsHtml += `<tr${rowClass}>`;
 
-      // 左側の処理（凹の形を作るため、下段は枠なし結合セルにする）
       if (isUpper) {
         if (r === 0) {
           rowsHtml += `<td rowspan="4" class="game-label-col">${label}</td>`;
@@ -70,22 +73,42 @@ function generatePDF(state) {
         rowsHtml += `<td class="serve-col">${srVal}</td>`;
       } else {
         if (r === 4) {
-          // 下段左側は3列分を1つに結合して枠線を消す（凹の切り欠き部分）
           rowsHtml += `<td colspan="3" rowspan="4" class="lower-blank-area"></td>`;
         }
       }
 
-      // ラリー得点セル
-      let startCol = isUpper ? 1 : 34; // ★修正：4マス増えたので下段の開始位置を30から34へシフト
-      for (let c = 0; c < 33; c++) { // ★修正：29マスから33マスへ追加
-        let cellVal = tableData[playerRowIndex] && tableData[playerRowIndex][startCol + c] ? tableData[playerRowIndex][startCol + c] : "";
+      let startCol = isUpper ? 1 : 34; 
+      // 下段のラリーマスは31マスで止め、残り2列分を最終スコア枠にする
+      let rallyCellCount = isUpper ? 33 : 31;
+
+      for (let c = 0; c < rallyCellCount; c++) { 
+        let colIndex = startCol + c;
+        let cellVal = tableData[playerRowIndex] && tableData[playerRowIndex][colIndex] ? tableData[playerRowIndex][colIndex] : "";
         
-        // 勝者の最終スコア（W_ が付いている場合）の処理：単に文字だけにする
         if (typeof cellVal === 'string' && cellVal.startsWith("W_")) {
             cellVal = cellVal.replace("W_", "");
         }
         
-        rowsHtml += `<td class="rally-cell">${cellVal}</td>`;
+        // デュース時の斜線マーカー判定
+        let isSlash = (tableData[0] && tableData[0][colIndex] === "SLASH");
+        
+        if (isSlash) {
+          // 4行ぶち抜きの斜線セルを描画するため、一番上の行(r=0 or r=4)の時だけtdを出力（他はスキップ）
+          if (playerRowIndex === 0) {
+             rowsHtml += `<td rowspan="4" class="deuce-slash-col"></td>`;
+          }
+        } else {
+           rowsHtml += `<td class="rally-cell">${cellVal}</td>`;
+        }
+      }
+
+      // ★修正箇所②：下段の最後の2列に最終スコア専用の大きな枠を配置し、CSSで罫線を制御しやすいよう個別のクラスを付与
+      if (!isUpper) {
+          if (r === 4) {
+              rowsHtml += `<td rowspan="2" colspan="2" class="final-score-box final-score-top">${gameFinalL}</td>`;
+          } else if (r === 6) {
+              rowsHtml += `<td rowspan="2" colspan="2" class="final-score-box final-score-bottom">${gameFinalR}</td>`;
+          }
       }
 
       rowsHtml += `</tr>`;
@@ -94,12 +117,12 @@ function generatePDF(state) {
     return rowsHtml;
   };
 
-  // 1つのテーブルとして3ゲーム分をまとめる
   let allGamesHTML = `
     <div class="game-section">
       <table class="game-table">
         <colgroup>
-          <col style="width: 2.5%;"> <col style="width: 14%;">  <col style="width: 2.5%;"> ${Array(33).fill('<col style="width: 2.454%;">').join('')} </colgroup>
+          <col style="width: 2.5%;"> <col style="width: 14%;">  <col style="width: 2.5%;"> ${Array(33).fill('<col style="width: 2.454%;">').join('')}
+        </colgroup>
         <tbody>
           ${getGameRowsHTML(0, "1")}
           ${getGameRowsHTML(1, "2")}
@@ -109,7 +132,6 @@ function generatePDF(state) {
     </div>
   `;
 
-  // A4サイズのHTMLを組み立て
   container.innerHTML = `
     <div id="score-sheet-a4" class="score-sheet-page">
       
@@ -194,7 +216,6 @@ function generatePDF(state) {
 
   document.body.appendChild(container);
 
-  // ファイル名の自動生成と html2pdf の呼び出し
   let element = document.getElementById('score-sheet-a4');
   let now = new Date();
   let dateStrPDF = now.getFullYear() + ('0'+(now.getMonth()+1)).slice(-2) + ('0'+now.getDate()).slice(-2) + "_" + ('0'+now.getHours()).slice(-2) + ('0'+now.getMinutes()).slice(-2);

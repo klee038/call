@@ -227,7 +227,7 @@
   text-align: center;
 }
 
-/* 一番右の列（29マス目）は太線 */
+/* 一番右の列（29マス目など最後尾）は太線 */
 .game-table td:last-child {
   border-right: 2px solid #000000 !important;
 }
@@ -324,4 +324,50 @@
   margin-left: 5px;
   height: 14px;
   text-align: center; /* 中央揃え */
+}
+
+
+/* =========================================
+   ★今回追加：デュースの斜線と最終スコア枠
+========================================= */
+
+/* デュース突入時の斜線（1列＝4マス分を貫通） */
+.deuce-slash-col {
+  background-image: linear-gradient(to bottom right, transparent calc(50% - 0.5px), #000000 calc(50% - 0.5px), #000000 calc(50% + 0.5px), transparent calc(50% + 0.5px));
+}
+
+/* 斜線セル（rowspan=4）が、4行ごとの太線（下部）指定をすり抜けてしまう分を再指定して補填 */
+.game-table tr:nth-child(1) .deuce-slash-col,
+.game-table tr:nth-child(9) .deuce-slash-col,
+.game-table tr:nth-child(17) .deuce-slash-col {
+  border-bottom: 2px solid #000000 !important;
+}
+
+.game-table tr:nth-child(5) .deuce-slash-col,
+.game-table tr:nth-child(13) .deuce-slash-col,
+.game-table tr:nth-child(21) .deuce-slash-col {
+  border-bottom: 2px solid #000000 !important;
+}
+
+/* 最終スコア専用の大きな枠（2×2マス結合） */
+.final-score-box {
+  font-size: 16px !important;
+  font-weight: bold;
+  text-align: center;
+  vertical-align: middle;
+}
+
+/* ★修正箇所：最終得点枠の上段（左チーム）: 上・左・右を太線、下を普通線に */
+.final-score-top {
+  border-top: 2px solid #000000 !important;
+  border-left: 2px solid #000000 !important;
+  border-right: 2px solid #000000 !important;
+  border-bottom: 1px solid #000000 !important;
+}
+
+/* ★修正箇所：最終得点枠の下段（右チーム）: 左・右・下を太線に */
+.final-score-bottom {
+  border-left: 2px solid #000000 !important;
+  border-right: 2px solid #000000 !important;
+  border-bottom: 2px solid #000000 !important;
 }
