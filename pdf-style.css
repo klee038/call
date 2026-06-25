@@ -1,0 +1,327 @@
+﻿/* =========================================
+   PDF出力専用スタイル (pdf-style.css)
+   A4横サイズ 公式スコアシート準拠フォーマット
+========================================= */
+
+#pdf-export-container {
+  position: absolute;
+  top: -9999px;
+  left: -9999px;
+  background-color: #ffffff;
+  color: #000000; 
+}
+
+.score-sheet-page {
+  width: 297mm;
+  height: 210mm; /* A4横サイズ */
+  padding: 6mm 15mm; /* 用紙の上下余白 */
+  background: #ffffff;
+  color: #000000 !important; /* 確実に黒文字にする */
+  box-sizing: border-box;
+  font-family: "Hiragino Mincho ProN", "Yu Mincho", "MS PMincho", serif;
+  display: flex;
+  flex-direction: column;
+}
+
+.sheet-title {
+  text-align: center;
+  font-size: 20px;
+  font-weight: normal;
+  letter-spacing: 12px;
+  margin-bottom: 8px; /* 隙間を圧縮 */
+}
+
+/* -----------------------------------------
+   ヘッダーエリア（左右下線 + 中央テーブル）
+----------------------------------------- */
+.sheet-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 4px; /* 隙間を圧縮 */
+  width: 100%;
+}
+
+.header-side {
+  width: 20%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px; /* 行間を少し詰める */
+  margin-bottom: 2px;
+}
+
+.header-center {
+  width: 56%;
+}
+
+.header-line {
+  display: flex;
+  align-items: flex-end;
+  border-bottom: 1px solid #000000;
+  font-size: 12px;
+  padding-bottom: 2px;
+  white-space: nowrap;
+}
+
+.line-blank {
+  flex-grow: 1;
+  padding-left: 5px;
+  text-align: right; /* 記入内容は右揃え */
+  font-family: "Helvetica Neue", Arial, sans-serif;
+}
+
+/* -----------------------------------------
+   中央の対戦表テーブル
+----------------------------------------- */
+.match-score-table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 2px solid #000000; /* 外枠は太く */
+  text-align: center;
+  table-layout: fixed;
+}
+
+.match-score-table th, .match-score-table td {
+  border: 1px solid #000000; /* 中側の線は普通線 */
+  color: #000000;
+  vertical-align: middle;
+  padding: 2px;
+  height: 22px; 
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.match-score-table th {
+  font-size: 12px;
+  font-weight: normal;
+  border-bottom: 1px solid #000000;
+}
+
+.lr-label {
+  font-size: 11px;
+  line-height: 1.5;
+  border-right: 1px solid #000000;
+}
+
+.player-name-cell {
+  text-align: left;
+  padding-left: 10px !important;
+  font-size: 14px;
+  font-weight: bold;
+  border-bottom: 1px solid #000000;
+  text-overflow: ellipsis;
+}
+
+/* ★ Player1とPlayer2の間のみを薄線に変更（上下両方指定して競合を防ぐ） */
+.match-score-table tbody tr:nth-child(1) .player-name-cell {
+  border-bottom: 1px solid #999999 !important;
+}
+.match-score-table tbody tr:nth-child(2) .player-name-cell {
+  border-top: 1px solid #999999 !important;
+  border-bottom: 1px solid #000000 !important;
+}
+
+.team-name-cell {
+  text-align: left;
+  padding-left: 10px !important;
+  font-size: 12px;
+  text-overflow: ellipsis;
+}
+
+/* マッチスコア */
+.match-score-cell {
+  font-size: 20px;
+  font-weight: bold;
+  font-family: "Helvetica Neue", Arial, sans-serif;
+  border-left: 1px dotted #000000 !important;
+  border-right: 1px dotted #000000 !important;
+}
+
+.game-score-cell {
+  font-size: 14px;
+  font-weight: bold;
+  font-family: "Helvetica Neue", Arial, sans-serif;
+  border-bottom: 1px dashed #000000;
+}
+
+/* 最後の行の点線を消す */
+.match-score-table tbody tr:last-child .game-score-cell {
+  border-bottom: none;
+}
+
+/* -----------------------------------------
+   各ゲームのマス目エリア（1つのテーブルに統合）
+----------------------------------------- */
+.game-section {
+  margin-bottom: 3px; /* 隙間を圧縮 */
+}
+
+.game-table {
+  width: 100%;
+  border-collapse: collapse;
+  border: none; /* 重複を防ぐため外枠は各セルで個別に指定 */
+  table-layout: fixed;
+}
+
+/* 文字に押し負けず、かつA4に収まるように高さを21pxに固定 */
+.game-table tr {
+  height: 21px !important;
+  max-height: 21px !important;
+}
+
+/* =========================================
+   枠線のメリハリ（太線・普通線・薄線）の抜本的ルール
+========================================= */
+
+/* ① 基本のセルスタイル（縦横ともに薄線、上線は無し） */
+.game-table th, .game-table td {
+  border-top: none !important; 
+  border-bottom: 1px solid #999999;
+  border-left: none !important;
+  border-right: 1px solid #999999;
+  color: #000000;
+  vertical-align: middle;
+  padding: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  height: 21px !important; 
+  max-height: 21px !important;
+  box-sizing: border-box;
+}
+
+/* ② 縦線のルール（太線と普通線） */
+
+/* ゲームラベル列 */
+.game-table td.game-label-col {
+  border-left: 2px solid #000000 !important;
+  border-right: 2px solid #000000 !important;
+  text-align: center;
+  font-size: 11px;
+  font-weight: normal;
+  line-height: 1.2;
+}
+
+/* Player列 */
+.game-table td.player-row-col {
+  border-right: 1px solid #000000 !important;
+  text-align: left !important;
+  padding-left: 8px !important;
+  font-size: 13px;
+  font-weight: bold;
+  text-overflow: ellipsis;
+}
+
+/* S/R列 */
+.game-table td.serve-col {
+  border-right: 2px solid #000000 !important;
+  text-align: center;
+  font-size: 11px;
+  font-weight: bold;
+}
+
+/* ラリーマスの数字配置 */
+.game-table td.rally-cell {
+  font-size: 11px;
+  font-weight: bold;
+  font-family: "Helvetica Neue", Arial, sans-serif;
+  text-align: center;
+}
+
+/* 一番右の列（29マス目）は太線 */
+.game-table td:last-child {
+  border-right: 2px solid #000000 !important;
+}
+
+
+/* ③ 横線のルール（2行ごと・4行ごと） */
+
+/* 表の一番上だけは上枠線を引く */
+.game-table tr:first-child td {
+  border-top: 2px solid #000000 !important;
+}
+
+/* 2行ごと（2, 6, 10...）の下線は 普通線 */
+.game-table tr:nth-child(2n) td {
+  border-bottom: 1px solid #000000 !important;
+}
+
+/* 4行ごと（4, 8, 12...）の下線は 太線 */
+.game-table tr:nth-child(4n) td {
+  border-bottom: 2px solid #000000 !important;
+}
+
+/* ★ rowspan されているセルの下線を太線に補正 */
+.game-table td.game-label-col {
+  border-bottom: 2px solid #000000 !important;
+}
+
+/* ④ 逆L字（凹）の下半分の空白処理 */
+.game-table td.lower-blank-area {
+  border-top: 1px solid #000000 !important; /* 中央横線の延長 */
+  border-right: 2px solid #000000 !important; /* serve-colの延長 */
+  border-bottom: 2px solid #000000 !important; /* ★ゲーム間の太線を貫通させる */
+  border-left: none !important;
+  background-color: transparent;
+}
+
+/* ★ 3ゲーム目（一番最後）の凹の底だけは線を消す（21行目のセル） */
+.game-table tr:nth-child(21) td.lower-blank-area {
+  border-bottom: none !important;
+}
+
+
+/* -----------------------------------------
+   フッター（上下2段レイアウト）
+----------------------------------------- */
+.sheet-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px; /* 行間を圧縮 */
+  margin-top: auto; 
+  padding-top: 5px; 
+  font-size: 14px;
+  color: #000000;
+}
+
+.footer-row {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.footer-sign-box {
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+  margin-right: 20px;
+}
+.footer-sign-box:last-child {
+  margin-right: 0;
+}
+
+.footer-time-box {
+  flex: 1; /* 均等に割り当てることで線を最大限長くする */
+  display: flex;
+  align-items: flex-end;
+  margin-right: 20px;
+}
+.footer-time-box:last-child {
+  margin-right: 0;
+}
+
+/* 手書き記入用の下線 */
+.sign-line {
+  flex-grow: 1;
+  border-bottom: 1px solid #000000;
+  margin-left: 10px;
+  height: 14px;
+  text-align: center; /* 中央揃え */
+}
+
+.time-line {
+  flex-grow: 1; /* 余白を最大限使って線を長くする */
+  border-bottom: 1px solid #000000;
+  margin-left: 5px;
+  height: 14px;
+  text-align: center; /* 中央揃え */
+}
