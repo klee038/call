@@ -10,7 +10,19 @@ function generatePDF(state) {
   container.id = 'pdf-export-container';
   
   let isDouble = state.flowIsDouble;
-  let matchTypeStr = isDouble ? "ダブルス" : "シングルス";
+  let typeStr = isDouble ? "ダブルス" : "シングルス";
+  
+  // ★修正箇所：試合のフォーマット情報を取得して種目欄の文字列を組み立てる
+  let games = state.flowMaxGames || 3;
+  let points = state.flowMaxPoints || 21;
+  let hasSetting = state.flowHasSetting !== undefined ? state.flowHasSetting : true;
+  
+  let matchTypeStr = `${typeStr} ${games}G ${points}pt`;
+  if (hasSetting) {
+      let deuceLimit = (points === 21) ? 30 : ((points === 15) ? 21 : 15);
+      matchTypeStr += ` (${deuceLimit})`;
+  }
+  
   let tLName = state.initialTL || state.tL || "";
   let tRName = state.initialTR || state.tR || "";
   
@@ -54,15 +66,15 @@ function generatePDF(state) {
     let gameFinalL = histStrs[gameIndex] ? histStrs[gameIndex].a : "";
     let gameFinalR = histStrs[gameIndex] ? histStrs[gameIndex].b : "";
 
-    // ★修正箇所：最終スコアに対するデュース判定と下線の付与
+    // 最終スコアに対するデュース判定と下線の付与
     let limit = state.flowMaxPoints || 21;
     let deucePt = limit - 1;
-    let hasSetting = state.flowHasSetting !== undefined ? state.flowHasSetting : true;
+    let localHasSetting = state.flowHasSetting !== undefined ? state.flowHasSetting : true;
     
     let displayFinalL = gameFinalL;
     let displayFinalR = gameFinalR;
     
-    if (hasSetting && gameFinalL !== "" && gameFinalR !== "") {
+    if (localHasSetting && gameFinalL !== "" && gameFinalR !== "") {
         // 両者の最終スコアがデュースポイントに達していれば、文字に下線を引く
         if (gameFinalL >= deucePt && gameFinalR >= deucePt) {
             displayFinalL = `<span style="border-bottom: 1px solid #000000; padding-bottom: 2px; display: inline-block; line-height: 1;">${gameFinalL}</span>`;
@@ -206,7 +218,7 @@ function generatePDF(state) {
         </div>
         
         <div class="header-side">
-          <div class="header-line">種目：<span class="line-blank">${matchTypeStr}</span></div>
+          <div class="header-line">種目：<span class="line-blank" style="font-size: 11px;">${matchTypeStr}</span></div>
           <div class="header-line">試合番号：<span class="line-blank"></span></div>
           <div class="header-line">コート：<span class="line-blank"></span></div>
           <div class="header-line">コール時刻：<span class="line-blank"></span></div>
