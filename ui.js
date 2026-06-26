@@ -9,7 +9,7 @@ window.onload = function() {
   // 画面の初期描画
   if (typeof renderFlow === 'function') renderFlow();
   
-  // ROSTERのEnterキー登録ショートカット（要素が存在する場合のみ安全に登録してフリーズを防止）
+  // ROSTERのEnterキー登録ショートカット
   const rosterPlayerInput = document.getElementById('roster-player-name');
   const rosterTeamInput = document.getElementById('roster-team-name');
   const rosterSubmitBtn = document.getElementById('roster-submit-btn');
@@ -25,7 +25,7 @@ window.onload = function() {
     });
   }
 
-  // 選手/チーム選択モーダルのCANCELボタンを大型化（DOMの書き換え）
+  // 選手/チーム選択モーダルのCANCELボタンを大型化
   const playerSelectCancelContainer = document.querySelector('#player-select-overlay .back-nav-bar');
   if (playerSelectCancelContainer) {
     playerSelectCancelContainer.style.marginTop = '20px';
@@ -194,10 +194,9 @@ function syncBoardDOM() {
 }
 
 // =========================================
-// QRスキャナー・出力モーダル開閉と圧縮/解凍ロジック（フェーズ4）
+// QRスキャナー・出力モーダル開閉と圧縮/解凍ロジック（フェーズ4改修）
 // =========================================
 
-// グローバルにカメラインスタンスを保持
 let html5QrCode = null;
 
 /**
@@ -209,7 +208,7 @@ function openQRScannerModal() {
   overlay.style.display = 'flex';
 
   if (typeof Html5Qrcode === 'undefined') {
-    alert("QRコード読み取り機能が読み込まれていません。通信環境を確認してください。");
+    alert("QRコード読み取り機能が読み込まれていません。");
     return;
   }
 
@@ -228,21 +227,14 @@ function openQRScannerModal() {
     }
 
     try {
-      // 1. Base64文字列をバイナリ（Uint8Array）に変換
       let binaryString = atob(decodedText);
       let charArray = binaryString.split('').map(c => c.charCodeAt(0));
       let uint8Array = new Uint8Array(charArray);
 
-      // 2. Pakoで解凍
       let decompressedUint8 = pako.inflate(uint8Array);
-      
-      // 3. Uint8Arrayから文字列(UTF-8)に戻す（TextDecoderを使用）
       let decompressedText = new TextDecoder().decode(decompressedUint8);
-      
-      // 4. JSONとしてパース
       let matchData = JSON.parse(decompressedText);
       
-      // 5. ワープ処理へ
       if (typeof resumeMatchFromState === 'function') {
         resumeMatchFromState(matchData);
       } else {
@@ -250,25 +242,30 @@ function openQRScannerModal() {
       }
       
     } catch (e) {
-      alert("QRコードの解読に失敗しました。データが大きすぎるか、形式が間違っています。");
+      alert("QRコードの解読に失敗しました。データ形式が正しくありません。");
       console.error(e);
     }
-
     overlay.style.display = 'none';
   };
 
-  const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+  // 高解像度（フルHD）の強制とフォーカス領域の指定
+  const cameraConfig = { 
+    facingMode: "environment",
+    width: { min: 1024, ideal: 1920 },
+    height: { min: 768, ideal: 1080 }
+  };
+  const config = { 
+    fps: 15,
+    qrbox: { width: 300, height: 300 } 
+  };
 
-  html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess)
+  html5QrCode.start(cameraConfig, config, onScanSuccess)
     .catch(err => {
-      alert("カメラの起動に失敗しました。ブラウザのカメラアクセス許可を確認してください。");
+      alert("カメラの起動に失敗しました。ブラウザの許可を確認してください。");
       console.error(err);
     });
 }
 
-/**
- * 【入力側】QRスキャナーモーダルを閉じる（キャンセル時）
- */
 function closeQRScannerModal() {
   const overlay = document.getElementById('qr-scanner-overlay');
   if (overlay) {
@@ -283,7 +280,6 @@ function closeQRScannerModal() {
 
 /**
  * 【出力側】QR表示モーダルを開き、データを圧縮してQRコードを描画する
- * 引数 index: MATCH HISTORY の配列インデックス
  */
 function openQROutputModal(index) {
   const overlay = document.getElementById('qr-output-overlay');
@@ -295,40 +291,38 @@ function openQROutputModal(index) {
     let matchItem = historyList[index];
     if (!matchItem) throw new Error("指定された試合データが見つかりません。");
     
-    // ディープコピーして元の履歴データを壊さないようにする
     let state = JSON.parse(JSON.stringify(matchItem.state || matchItem));
     
-    // ★大容量化の原因であるUndo履歴（histとredoStack）を空にしてデータを軽量化
+    // Undo履歴を空にして軽量化
     state.hist = [];
     state.redoStack = [];
     
-    // 1. 状態オブジェクトをJSON文字列化
     let jsonString = JSON.stringify(state);
-    
-    // 2. TextEncoderでUTF-8のバイナリ（Uint8Array）に変換（日本語文字化け防止）
     let uint8Array = new TextEncoder().encode(jsonString);
-    
-    // 3. Pako で超圧縮（deflate）
     let compressedArray = pako.deflate(uint8Array);
     
-    // 4. 圧縮されたバイナリをBase64文字列に変換
     let binaryString = "";
     for (let i = 0; i < compressedArray.length; i++) {
         binaryString += String.fromCharCode(compressedArray[i]);
     }
     let base64String = btoa(binaryString);
     
-    // 5. 空枠の中身をリセットして描画
     const qrArea = document.getElementById('qr-output-area');
-    qrArea.innerHTML = ""; // 古いQRを消す
+    qrArea.innerHTML = ""; 
     
-    // ★修正：プロジェクトに導入されている qrcode.min.js の正しい命令文に変更
+    // ★修正：200pxのガチガチの固定サイズ制限をJavaScriptから強制的に解除する
+    qrArea.style.width = "100%";
+    qrArea.style.height = "auto";
+    
     let canvas = document.createElement('canvas');
+    // iPhoneのカメラが焦点・解像度を合わせやすいよう、キャンバスを枠いっぱいに表示させる
+    canvas.style.width = "100%";
+    canvas.style.height = "auto";
     qrArea.appendChild(canvas);
     
     QRCode.toCanvas(canvas, base64String, {
-      width: 200,
       margin: 2,
+      scale: 5, // ★修正：1ドットの描画サイズを大きくし、潰れず鮮明に表示させる
       color: {
         dark: "#000000",
         light: "#ffffff"
@@ -347,16 +341,16 @@ function openQROutputModal(index) {
   }
 }
 
-/**
- * 【出力側】QR表示モーダルを閉じる
- */
 function closeQROutputModal() {
   const overlay = document.getElementById('qr-output-overlay');
   if (overlay) {
     overlay.style.display = 'none';
-    
-    // モーダルが閉じた後、次に備えて描画されたQRコードを消去・リセットする
     const qrArea = document.getElementById('qr-output-area');
-    if (qrArea) qrArea.innerHTML = '<span style="color: #999; font-size: 12px;">(QR Code Space)</span>';
+    // リセット時も親要素のスタイルを元に戻しておく
+    if (qrArea) {
+      qrArea.innerHTML = '<span style="color: #999; font-size: 12px;">(QR Code Space)</span>';
+      qrArea.style.width = "200px";
+      qrArea.style.height = "200px";
+    }
   }
 }
