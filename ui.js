@@ -9,7 +9,7 @@ window.onload = function() {
   // 画面の初期描画
   if (typeof renderFlow === 'function') renderFlow();
   
-  // ROSTERのEnterキー登録ショートカット（要素が存在する場合のみ安全に登録してフリーズを防止）
+  // ROSTERのEnterキー登録ショートカット
   const rosterPlayerInput = document.getElementById('roster-player-name');
   const rosterTeamInput = document.getElementById('roster-team-name');
   const rosterSubmitBtn = document.getElementById('roster-submit-btn');
@@ -40,11 +40,9 @@ window.onload = function() {
  * 得点板のDOM表示・エフェクト更新処理
  */
 function syncBoardDOM() {
-  // SR選択中であっても、背景のスコアとボタンは常に最新に同期する
   let titleLText = getBoardSideName(true);
   let titleRText = getBoardSideName(false);
   
-  // チーム名が15文字以上の長文の場合は文字縮小クラスを付与
   if (titleLText.length >= 15) {
     document.getElementById("title-text-L").classList.add("long-text");
   } else {
@@ -64,7 +62,6 @@ function syncBoardDOM() {
   document.getElementById("ann-text-L").innerText = annL;
   document.getElementById("ann-text-R").innerText = annR;
 
-  // Undo / Redo ボタンの活性化状態の切り替え
   let btnRedo = document.getElementById("btn-redo");
   if (btnRedo) {
     if (redoStack.length > 0) {
@@ -87,7 +84,6 @@ function syncBoardDOM() {
     }
   }
 
-  // GAME PREPARATION画面などが開いている間は、裏側のトップボタン群を安全に隠す
   let btnRecorder = document.getElementById("btn-recorder");
   let btnClose = document.getElementById("btn-close");
 
@@ -103,14 +99,12 @@ function syncBoardDOM() {
     if (btnClose) btnClose.classList.remove("hidden-by-overlay");
   }
 
-  // 主審カンペの更新（call.jsの関数を呼び出す）
   if (typeof syncVolumeCallカンペ === 'function') {
     syncVolumeCallカンペ();
   }
 
   if (isSelectingRoles) return;
 
-  // セッティングありの時のみ、デュース（発光エフェクト）を許可
   let deuceCheck = flowHasSetting ? (sL >= flowMaxPoints - 1 && sR >= flowMaxPoints - 1 && Math.abs(sL - sR) <= 1) : false;
   if (deuceCheck) {
     document.getElementById("score-val-L").classList.add("deuce");
@@ -120,14 +114,12 @@ function syncBoardDOM() {
     document.getElementById("score-val-R").classList.remove("deuce");
   }
 
-  // 取得ゲーム数の丸（ドット）の描画
   let winTarget = Math.floor((flowMaxGames + 1) / 2);
   let dotsL = document.getElementById("game-dots-L");
   let dotsR = document.getElementById("game-dots-R");
   if (dotsL) dotsL.innerHTML = Array.from({length: winTarget}, (_, i) => `<div class="game-dot" style="background-color: ${i < gL ? '#FFFFFF' : 'rgba(255,255,255,0.12)'}"></div>`).join('');
   if (dotsR) dotsR.innerHTML = Array.from({length: winTarget}, (_, i) => `<div class="game-dot" style="background-color: ${i < gR ? '#FFFFFF' : 'rgba(255,255,255,0.12)'}"></div>`).join('');
 
-  // サーバー・レシーバーの枠（タグ）の描画
   let containerL = document.getElementById("tags-container-L");
   let containerR = document.getElementById("tags-container-R");
 
@@ -245,11 +237,10 @@ function openQRScannerModal() {
       alert("QRコードの解読に失敗しました。データ形式が正しくありません。");
       console.error(e);
     }
-
     overlay.style.display = 'none';
   };
 
-  // ★修正：高解像度の強制とフォーカス領域の指定（読み取り精度を劇的に向上）
+  // ★修正：iPhoneでも安全に高解像度を要求し、スキャン領域を明示する設定
   const cameraConfig = { 
     facingMode: "environment",
     width: { min: 1024, ideal: 1920 },
@@ -262,7 +253,7 @@ function openQRScannerModal() {
 
   html5QrCode.start(cameraConfig, config, onScanSuccess)
     .catch(err => {
-      alert("カメラの起動に失敗しました。ブラウザのカメラアクセス許可を確認してください。");
+      alert("カメラの起動に失敗しました。ブラウザの許可を確認してください。");
       console.error(err);
     });
 }
@@ -292,15 +283,13 @@ function openQROutputModal(index) {
     let matchItem = historyList[index];
     if (!matchItem) throw new Error("指定された試合データが見つかりません。");
     
-    // ディープコピーして元の履歴データを壊さないようにする
     let state = JSON.parse(JSON.stringify(matchItem.state || matchItem));
     
-    // ★超・徹底的ダイエット（重い履歴データを全て削ぎ落として低密度QRにする）
+    // Undo履歴を空にして徹底的軽量化
     state.hist = [];
     state.redoStack = [];
     state.matchTimeline = [];
     state.recorderData = null;
-    // ※ matchScoreHistory (ゲームカウント履歴) は軽いのでそのまま残す
     
     let jsonString = JSON.stringify(state);
     let uint8Array = new TextEncoder().encode(jsonString);
@@ -322,7 +311,6 @@ function openQROutputModal(index) {
     canvas.style.height = "auto";
     qrArea.appendChild(canvas);
     
-    // ★修正：誤り訂正を最低(L)にしてドットを粗くし、スケールで大きく描画する
     QRCode.toCanvas(canvas, base64String, {
       margin: 2,
       scale: 6, 
@@ -344,15 +332,30 @@ function openQROutputModal(index) {
   }
 }
 
+/**
+ * 【出力側】QR表示モーダルを閉じる
+ */
 function closeQROutputModal() {
   const overlay = document.getElementById('qr-output-overlay');
   if (overlay) {
     overlay.style.display = 'none';
     const qrArea = document.getElementById('qr-output-area');
     if (qrArea) {
+      // 閉じたときにフルスクリーン状態をリセットする
+      qrArea.classList.remove('qr-fullscreen');
       qrArea.innerHTML = '<span style="color: #999; font-size: 12px;">(QR Code Space)</span>';
       qrArea.style.width = "200px";
       qrArea.style.height = "200px";
     }
+  }
+}
+
+/**
+ * 【出力側】新設：QRコードをタップして全画面表示に切り替える関数
+ */
+function toggleQRFullscreen() {
+  const qrArea = document.getElementById('qr-output-area');
+  if (qrArea) {
+    qrArea.classList.toggle('qr-fullscreen');
   }
 }
