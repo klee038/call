@@ -12,10 +12,15 @@
 <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="pdf-style.css">
 
+<!-- 外部ライブラリ -->
 <script src="html2pdf.bundle.min.js" defer></script>
+<script src="pako.min.js" defer></script>
+<script src="qrcode.min.js" defer></script>
+<script src="html5-qrcode.min.js" defer></script>
+
+<!-- アプリのスクリプト -->
 <script src="pdf.js" defer></script>
 <script src="recorder.js" defer></script>
-
 <script src="roster.js" defer></script>
 <script src="game.js" defer></script>
 <script src="setup.js" defer></script>
@@ -184,6 +189,22 @@
     </button>
     <div class="roster-header" style="margin-bottom: 20px;">MATCH HISTORY</div>
     <div id="history-modal-content" class="roster-list" style="max-height: 60vh; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;"></div>
+  </div>
+</div>
+
+<!-- ★ 新設：QRスキャン用モーダル -->
+<div id="qr-scanner-overlay" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.87); backdrop-filter: blur(5px); z-index: 300; align-items: center; justify-content: center; padding: 20px; overflow-y: auto;">
+  <div style="width: 100%; max-width: 450px; background: #1C1C1E; border-radius: 12px; padding: 20px; border: 1px solid #333333; position: relative;">
+    <button class="roster-close-icon-btn" onclick="closeQRScannerModal()">
+      <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+    </button>
+    <div class="roster-header" style="margin-bottom: 10px;">SCAN CODE</div>
+    <div style="color: #A1A1AA; font-size: 13px; text-align: center; margin-bottom: 20px;">本部のQRコードをスキャンしてください</div>
+    
+    <!-- ★ 将来カメラ映像が描画される空の枠 -->
+    <div id="qr-reader" style="width: 100%; min-height: 250px; background-color: #000; border: 1px solid #333; border-radius: 8px; margin-bottom: 20px;"></div>
+    
+    <button class="action-btn roster-cancel-btn" style="width: 100%; margin: 0 auto; display: block;" onclick="closeQRScannerModal()">CANCEL</button>
   </div>
 </div>
 

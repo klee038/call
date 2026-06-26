@@ -71,16 +71,25 @@ function renderFlow() {
 
   updateBoardFormatInfo();
 
-  // 左上のアイコン配置（PLAYERS画面の時のみ、名簿登録用のアウトライン＋入替ボタンを追加表示）
+  // ★変更点：Step1（MATCH FORMAT）画面の左上アイコンにQRボタンを追加し、隙間を揃える
   let leftHeaderActions = `
-    <button class="setting-icon-btn" onclick="openRosterModal()">
-      <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg>
-    </button>
+    <div style="display: flex; gap: 15px; align-items: center;">
+      <button class="setting-icon-btn" onclick="openQRScannerModal()">
+        <svg viewBox="0 0 24 24"><path d="M3 3h8v8H3V3zm2 2v4h4V5H5zm8-2h8v8h-8V3zm2 2v4h4V5h-4zM3 13h8v8H3v-8zm2 2v4h4v-4H5zm13-2h3v2h-3v-2zm-3 0h2v2h-2v-2zm3 3h3v2h-3v-2zm-3 0h2v4h-2v-4zm3 3h3v2h-3v-2z"/></svg>
+      </button>
+      <button class="setting-icon-btn" onclick="openRosterModal()">
+        <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg>
+      </button>
+    </div>
   `;
 
+  // ★変更点：Step2（PLAYERS）画面の左上アイコンにQRボタンを追加し、隙間を揃える
   if (flowStep === 2) {
     leftHeaderActions = `
       <div style="display: flex; gap: 15px; align-items: center;">
+        <button class="setting-icon-btn" onclick="openQRScannerModal()">
+          <svg viewBox="0 0 24 24"><path d="M3 3h8v8H3V3zm2 2v4h4V5H5zm8-2h8v8h-8V3zm2 2v4h4V5h-4zM3 13h8v8H3v-8zm2 2v4h4v-4H5zm13-2h3v2h-3v-2zm-3 0h2v2h-2v-2zm3 3h3v2h-3v-2zm-3 0h2v4h-2v-4zm3 3h3v2h-3v-2z"/></svg>
+        </button>
         <button class="setting-icon-btn" onclick="openRosterModal()">
           <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg>
         </button>

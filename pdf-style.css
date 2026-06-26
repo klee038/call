@@ -1,6 +1,6 @@
 ﻿/* =========================================
    PDF出力専用スタイル (pdf-style.css)
-   A4横サイズ 公式スコアシート準拠フォーマット
+   A4横サイズ(3G以下) / A4縦サイズ(5G) 公式スコアシート準拠フォーマット
 ========================================= */
 
 #pdf-export-container {
@@ -13,7 +13,7 @@
 
 .score-sheet-page {
   width: 297mm;
-  height: 210mm; /* A4横サイズ */
+  height: 210mm; /* 基本はA4横サイズ */
   padding: 6mm 15mm; /* 用紙の上下余白 */
   background: #ffffff;
   color: #000000 !important; /* 確実に黒文字にする */
@@ -22,6 +22,51 @@
   display: flex;
   flex-direction: column;
 }
+
+/* 5ゲーム時のA4縦サイズと縮小スケール・余白バランス調整 */
+.score-sheet-page.portrait {
+  width: 210mm;
+  height: 296mm; /* 297mmから1mm削って白紙ページ生成を防ぐ */
+  padding: 12mm 15mm; /* 用紙の上下余白を広げ、上下のバランスを均等に */
+}
+.score-sheet-page.portrait .game-table tr {
+  height: 19px !important; /* 広げて隙間を埋める */
+  max-height: 19px !important;
+}
+.score-sheet-page.portrait .game-table th, 
+.score-sheet-page.portrait .game-table td {
+  height: 19px !important; 
+  max-height: 19px !important;
+}
+.score-sheet-page.portrait .game-table td.game-label-col { font-size: 10px; }
+.score-sheet-page.portrait .game-table td.player-row-col { font-size: 11px; }
+.score-sheet-page.portrait .game-table td.rally-cell { font-size: 10px; }
+.score-sheet-page.portrait .header-side { width: 25%; }
+.score-sheet-page.portrait .header-center { width: 48%; }
+.score-sheet-page.portrait .match-score-table th, 
+.score-sheet-page.portrait .match-score-table td { height: 18px; padding: 1px; }
+.score-sheet-page.portrait .player-name-cell { font-size: 12px; }
+.score-sheet-page.portrait .team-name-cell { font-size: 10px; }
+.score-sheet-page.portrait .game-score-cell { font-size: 12px; }
+.score-sheet-page.portrait .match-score-cell { font-size: 16px; }
+
+/* 縦の要素間の微妙な隙間（バランス）調整 */
+.score-sheet-page.portrait .sheet-title { 
+  font-size: 18px; 
+  margin-top: 5px !important; /* js側のインライン10pxを抑える */
+  margin-bottom: 15px; /* タイトルとヘッダー表の間に隙間を入れる */
+}
+.score-sheet-page.portrait .sheet-header {
+  margin-bottom: 12px; /* ヘッダー表とゲーム欄の間に隙間を入れる */
+}
+
+/* フッターを一番下に揃えつつ、内部の行間を美しく保つ */
+.score-sheet-page.portrait .sheet-footer { 
+  margin-top: auto; 
+  font-size: 12px; 
+  gap: 10px; /* 署名欄と開始時刻欄の間も少し広げる */
+}
+
 
 .sheet-title {
   text-align: center;
@@ -112,11 +157,20 @@
   text-overflow: ellipsis;
 }
 
-/* ★ Player1とPlayer2の間のみを薄線に変更（上下両方指定して競合を防ぐ） */
-.match-score-table tbody tr:nth-child(1) .player-name-cell {
+/* ★ Player1とPlayer2の間のみを薄線に変更（3G以下のA4横用） */
+.score-sheet-page:not(.portrait) .match-score-table tbody tr:nth-child(1) .player-name-cell {
   border-bottom: 1px solid #999999 !important;
 }
-.match-score-table tbody tr:nth-child(2) .player-name-cell {
+.score-sheet-page:not(.portrait) .match-score-table tbody tr:nth-child(2) .player-name-cell {
+  border-top: 1px solid #999999 !important;
+  border-bottom: 1px solid #000000 !important;
+}
+
+/* ★ 5G用の薄線（Player1枠がrowspan=2なので1行目、Player2枠が3行目に配置される） */
+.score-sheet-page.portrait .match-score-table tbody tr:nth-child(1) .player-name-cell {
+  border-bottom: 1px solid #999999 !important;
+}
+.score-sheet-page.portrait .match-score-table tbody tr:nth-child(3) .player-name-cell {
   border-top: 1px solid #999999 !important;
   border-bottom: 1px solid #000000 !important;
 }
@@ -264,8 +318,8 @@
   background-color: transparent;
 }
 
-/* ★ 3ゲーム目（一番最後）の凹の底だけは線を消す（21行目のセル） */
-.game-table tr:nth-child(21) td.lower-blank-area {
+/* ★ 最後のゲームの凹の底だけは線を消す */
+.game-table td.lower-blank-area.last-game-blank {
   border-bottom: none !important;
 }
 
@@ -338,16 +392,20 @@
   -webkit-print-color-adjust: exact;
 }
 
-/* 合体セル（rowspan=4）が、4行ごとの太線（下部）指定をすり抜けてしまう分を再指定して補填 */
+/* 4行ごとの太線（下部）補填を第5ゲームまで拡張 */
 .game-table tr:nth-child(1) .deuce-slash-col,
 .game-table tr:nth-child(9) .deuce-slash-col,
-.game-table tr:nth-child(17) .deuce-slash-col {
+.game-table tr:nth-child(17) .deuce-slash-col,
+.game-table tr:nth-child(25) .deuce-slash-col,
+.game-table tr:nth-child(33) .deuce-slash-col {
   border-bottom: 2px solid #000000 !important;
 }
 
 .game-table tr:nth-child(5) .deuce-slash-col,
 .game-table tr:nth-child(13) .deuce-slash-col,
-.game-table tr:nth-child(21) .deuce-slash-col {
+.game-table tr:nth-child(21) .deuce-slash-col,
+.game-table tr:nth-child(29) .deuce-slash-col,
+.game-table tr:nth-child(37) .deuce-slash-col {
   border-bottom: 2px solid #000000 !important;
 }
 

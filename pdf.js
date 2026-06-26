@@ -8,6 +8,9 @@
   let points = state.flowMaxPoints || 21;
   let hasSetting = state.flowHasSetting !== undefined ? state.flowHasSetting : true;
   
+  // ★ 5ゲームマッチかどうかを判定
+  let is5Games = (games >= 5);
+  
   let matchTypeStr = `${typeStr} ${games}G ${points}pt`;
   if (hasSetting) {
       let deuceLimit = (points === 21) ? 30 : ((points === 15) ? 21 : 15);
@@ -25,6 +28,8 @@
   let g1Score = histStrs[0] ? `${histStrs[0].a} － ${histStrs[0].b}` : "  －  ";
   let g2Score = histStrs[1] ? `${histStrs[1].a} － ${histStrs[1].b}` : "  －  ";
   let g3Score = histStrs[2] ? `${histStrs[2].a} － ${histStrs[2].b}` : "  －  ";
+  let g4Score = histStrs[3] ? `${histStrs[3].a} － ${histStrs[3].b}` : "  －  ";
+  let g5Score = histStrs[4] ? `${histStrs[4].a} － ${histStrs[4].b}` : "  －  ";
 
   let totalMatchScoreL = 0;
   let totalMatchScoreR = 0;
@@ -36,7 +41,7 @@
   let displayTotalR = (histStrs.length > 0) ? totalMatchScoreR : "";
   let matchDate = state.date ? state.date.split(' ')[0] : "";
 
-  const getGameRowsHTML = (gameIndex, gameLabelStr) => {
+  const getGameRowsHTML = (gameIndex, gameLabelStr, isLastGame) => {
     let tableData = [];
     if (typeof Recorder !== 'undefined' && state.recorderData) {
         tableData = Recorder.generateTableData(state.recorderData, gameIndex, state.flowMaxPoints, state.flowHasSetting);
@@ -44,7 +49,12 @@
         tableData = Array.from({length: 4}, () => new Array(68).fill("")); 
     }
 
-    let label = gameLabelStr === "1" ? "第<br>一<br>ゲ<br>｜<br>ム" : gameLabelStr === "2" ? "第<br>二<br>ゲ<br>｜<br>ム" : "第<br>三<br>ゲ<br>｜<br>ム";
+    let label = "第<br>一<br>ゲ<br>｜<br>ム";
+    if (gameLabelStr === "2") label = "第<br>二<br>ゲ<br>｜<br>ム";
+    else if (gameLabelStr === "3") label = "第<br>三<br>ゲ<br>｜<br>ム";
+    else if (gameLabelStr === "4") label = "第<br>四<br>ゲ<br>｜<br>ム";
+    else if (gameLabelStr === "5") label = "第<br>五<br>ゲ<br>｜<br>ム";
+
     let rowsHtml = "";
     let players = [nL1, nL2, nR1, nR2];
 
@@ -77,7 +87,10 @@
         let srVal = tableData[playerRowIndex] && tableData[playerRowIndex][0] ? tableData[playerRowIndex][0] : "";
         rowsHtml += `<td class="serve-col">${srVal}</td>`;
       } else {
-        if (r === 4) rowsHtml += `<td colspan="3" rowspan="4" class="lower-blank-area"></td>`;
+        if (r === 4) {
+          let blankClass = isLastGame ? "lower-blank-area last-game-blank" : "lower-blank-area";
+          rowsHtml += `<td colspan="3" rowspan="4" class="${blankClass}"></td>`;
+        }
       }
 
       let startCol = isUpper ? 1 : 34; 
@@ -106,6 +119,14 @@
     return rowsHtml;
   };
 
+  let gamesBlocks = "";
+  let totalGamesToPrint = is5Games ? 5 : 3;
+  for (let i = 0; i < totalGamesToPrint; i++) {
+      let labelStr = (i + 1).toString();
+      let isLast = (i === totalGamesToPrint - 1);
+      gamesBlocks += getGameRowsHTML(i, labelStr, isLast);
+  }
+
   let allGamesHTML = `
     <div class="game-section">
       <table class="game-table">
@@ -113,16 +134,71 @@
           <col style="width: 2.5%;"> <col style="width: 14%;">  <col style="width: 2.5%;"> ${Array(33).fill('<col style="width: 2.454%;">').join('')}
         </colgroup>
         <tbody>
-          ${getGameRowsHTML(0, "1")}
-          ${getGameRowsHTML(1, "2")}
-          ${getGameRowsHTML(2, "3")}
+          ${gamesBlocks}
         </tbody>
       </table>
     </div>
   `;
 
+  // ★ 3ゲームか5ゲームかで上部スコア表の結合ロジックを分岐
+  let summaryTbodyHTML = "";
+
+  if (is5Games) {
+    // 5行になるが、Player1(rowspan=2)・Player2(rowspan=2)・チーム名(rowspan=1)として結合する
+    summaryTbodyHTML = `
+      <tr>
+        <th rowspan="5" class="lr-label">L<br>・<br>R</th>
+        <td rowspan="2" class="player-name-cell">${nL1}</td>
+        <td rowspan="5" class="match-score-cell">${displayTotalL}</td>
+        <td class="game-score-cell">${g1Score}</td>
+        <td rowspan="5" class="match-score-cell">${displayTotalR}</td>
+        <td rowspan="2" class="player-name-cell">${nR1}</td>
+        <th rowspan="5" class="lr-label">L<br>・<br>R</th>
+      </tr>
+      <tr>
+        <td class="game-score-cell">${g2Score}</td>
+      </tr>
+      <tr>
+        <td rowspan="2" class="player-name-cell">${nL2}</td>
+        <td class="game-score-cell">${g3Score}</td>
+        <td rowspan="2" class="player-name-cell">${nR2}</td>
+      </tr>
+      <tr>
+        <td class="game-score-cell">${g4Score}</td>
+      </tr>
+      <tr>
+        <td class="team-name-cell">${tLName ? tLName : ''}</td>
+        <td class="game-score-cell">${g5Score}</td>
+        <td class="team-name-cell">${tRName ? tRName : ''}</td>
+      </tr>
+    `;
+  } else {
+    // 従来の3ゲーム用（1行ずつ）
+    summaryTbodyHTML = `
+      <tr>
+        <th rowspan="3" class="lr-label">L<br>・<br>R</th>
+        <td class="player-name-cell">${nL1}</td>
+        <td rowspan="3" class="match-score-cell">${displayTotalL}</td>
+        <td class="game-score-cell">${g1Score}</td>
+        <td rowspan="3" class="match-score-cell">${displayTotalR}</td>
+        <td class="player-name-cell">${nR1}</td>
+        <th rowspan="3" class="lr-label">L<br>・<br>R</th>
+      </tr>
+      <tr>
+        <td class="player-name-cell">${nL2}</td>
+        <td class="game-score-cell">${g2Score}</td>
+        <td class="player-name-cell">${nR2}</td>
+      </tr>
+      <tr>
+        <td class="team-name-cell">${tLName ? tLName : ''}</td>
+        <td class="game-score-cell">${g3Score}</td>
+        <td class="team-name-cell">${tRName ? tRName : ''}</td>
+      </tr>
+    `;
+  }
+
   container.innerHTML = `
-    <div id="score-sheet-a4" class="score-sheet-page">
+    <div id="score-sheet-a4" class="score-sheet-page ${is5Games ? 'portrait' : ''}">
       <div class="sheet-title" style="color: #000; margin-top: 10px;">ス コ ア シ ー ト <span style="font-size:14px; letter-spacing: 2px;">(得点用紙)</span></div>
       <div class="sheet-header" style="color: #000;">
         <div class="header-side">
@@ -150,25 +226,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr>
-                <th rowspan="3" class="lr-label">L<br>・<br>R</th>
-                <td class="player-name-cell">${nL1}</td>
-                <td rowspan="3" class="match-score-cell">${displayTotalL}</td>
-                <td class="game-score-cell">${g1Score}</td>
-                <td rowspan="3" class="match-score-cell">${displayTotalR}</td>
-                <td class="player-name-cell">${nR1}</td>
-                <th rowspan="3" class="lr-label">L<br>・<br>R</th>
-              </tr>
-              <tr>
-                <td class="player-name-cell">${nL2}</td>
-                <td class="game-score-cell">${g2Score}</td>
-                <td class="player-name-cell">${nR2}</td>
-              </tr>
-              <tr>
-                <td class="team-name-cell">${tLName ? tLName : ''}</td>
-                <td class="game-score-cell">${g3Score}</td>
-                <td class="team-name-cell">${tRName ? tRName : ''}</td>
-              </tr>
+              ${summaryTbodyHTML}
             </tbody>
           </table>
         </div>
@@ -209,7 +267,7 @@
     filename:     filename,
     image:        { type: 'jpeg', quality: 0.98 },
     html2canvas:  { scale: 2, useCORS: true },
-    jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }
+    jsPDF:        { unit: 'mm', format: 'a4', orientation: is5Games ? 'portrait' : 'landscape' }
   };
 
   if (typeof html2pdf !== 'undefined') {

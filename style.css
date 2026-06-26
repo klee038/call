@@ -871,3 +871,11 @@ textarea.smart-field {
   line-height: 1.3;
   word-break: break-all;
 }
+
+/* ★ 新設：QRスキャナー用スタイル（将来のカメラ描画エリアの調整） */
+#qr-reader video {
+  width: 100% !important;
+  height: auto !important;
+  border-radius: 8px;
+  object-fit: cover;
+}

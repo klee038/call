@@ -199,3 +199,33 @@ function syncBoardDOM() {
     }
   }
 }
+
+// =========================================
+// QRスキャナーモーダル開閉ロジック（フェーズ1）
+// =========================================
+
+/**
+ * QRスキャナーモーダルを開く
+ */
+function openQRScannerModal() {
+  const overlay = document.getElementById('qr-scanner-overlay');
+  if (overlay) {
+    overlay.style.display = 'flex';
+    
+    // 【フェーズ2用】ここで html5-qrcode のカメラ起動処理を呼ぶ予定
+    // startQRScanner(); 
+  }
+}
+
+/**
+ * QRスキャナーモーダルを閉じる
+ */
+function closeQRScannerModal() {
+  const overlay = document.getElementById('qr-scanner-overlay');
+  if (overlay) {
+    overlay.style.display = 'none';
+    
+    // 【フェーズ2用】ここで html5-qrcode のカメラ停止処理を呼ぶ予定
+    // stopQRScanner(); 
+  }
+}
