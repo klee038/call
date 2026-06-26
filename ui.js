@@ -213,7 +213,6 @@ function openQRScannerModal() {
     return;
   }
 
-  // 既にインスタンスがあればリセット
   if (html5QrCode) {
     try { html5QrCode.stop(); } catch(e) {}
     html5QrCode = null;
@@ -221,9 +220,7 @@ function openQRScannerModal() {
 
   html5QrCode = new Html5Qrcode("qr-reader");
 
-  // QR読み取り成功時の処理（インポートと強制ワープ）
   const onScanSuccess = (decodedText, decodedResult) => {
-    // 成功したらすぐにカメラを止める
     if (html5QrCode) {
       html5QrCode.stop().then(() => {
         html5QrCode = null;
@@ -236,13 +233,16 @@ function openQRScannerModal() {
       let charArray = binaryString.split('').map(c => c.charCodeAt(0));
       let uint8Array = new Uint8Array(charArray);
 
-      // 2. Pakoで解凍し、JSON文字列に戻す
-      let decompressedText = pako.inflate(uint8Array, { to: 'string' });
+      // 2. Pakoで解凍
+      let decompressedUint8 = pako.inflate(uint8Array);
       
-      // 3. JSONとしてパース
+      // 3. Uint8Arrayから文字列(UTF-8)に戻す（TextDecoderを使用）
+      let decompressedText = new TextDecoder().decode(decompressedUint8);
+      
+      // 4. JSONとしてパース
       let matchData = JSON.parse(decompressedText);
       
-      // 4. history.js のワープ専用関数に投げて完全コピーさせる
+      // 5. ワープ処理へ
       if (typeof resumeMatchFromState === 'function') {
         resumeMatchFromState(matchData);
       } else {
@@ -254,11 +254,9 @@ function openQRScannerModal() {
       console.error(e);
     }
 
-    // モーダルを閉じる
     overlay.style.display = 'none';
   };
 
-  // カメラの設定（背面カメラ指定、fps控えめ）
   const config = { fps: 10, qrbox: { width: 250, height: 250 } };
 
   html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess)
@@ -297,36 +295,50 @@ function openQROutputModal(index) {
     let matchItem = historyList[index];
     if (!matchItem) throw new Error("指定された試合データが見つかりません。");
     
-    // matchItem.state があればそれを使う（なければ matchItem 自身を state とみなす）
-    let state = matchItem.state || matchItem;
+    // ディープコピーして元の履歴データを壊さないようにする
+    let state = JSON.parse(JSON.stringify(matchItem.state || matchItem));
+    
+    // ★大容量化の原因であるUndo履歴（histとredoStack）を空にしてデータを軽量化
+    state.hist = [];
+    state.redoStack = [];
     
     // 1. 状態オブジェクトをJSON文字列化
     let jsonString = JSON.stringify(state);
     
-    // 2. テキストエンコーダーで安全なバイナリ（Uint8Array）に変換
+    // 2. TextEncoderでUTF-8のバイナリ（Uint8Array）に変換（日本語文字化け防止）
     let uint8Array = new TextEncoder().encode(jsonString);
     
     // 3. Pako で超圧縮（deflate）
     let compressedArray = pako.deflate(uint8Array);
     
-    // 4. 圧縮されたバイナリをBase64文字列に変換（文字化け防止）
+    // 4. 圧縮されたバイナリをBase64文字列に変換
     let binaryString = "";
     for (let i = 0; i < compressedArray.length; i++) {
         binaryString += String.fromCharCode(compressedArray[i]);
     }
     let base64String = btoa(binaryString);
     
-    // 5. 空枠の中身をリセットして、qrcode.js でQRコードを描画
+    // 5. 空枠の中身をリセットして描画
     const qrArea = document.getElementById('qr-output-area');
     qrArea.innerHTML = ""; // 古いQRを消す
     
-    new QRCode(qrArea, {
-      text: base64String,
+    // ★修正：プロジェクトに導入されている qrcode.min.js の正しい命令文に変更
+    let canvas = document.createElement('canvas');
+    qrArea.appendChild(canvas);
+    
+    QRCode.toCanvas(canvas, base64String, {
       width: 200,
-      height: 200,
-      colorDark : "#000000",
-      colorLight : "#ffffff",
-      correctLevel : QRCode.CorrectLevel.L // 圧縮率優先（データ量が多いので復元率は低めに設定）
+      margin: 2,
+      color: {
+        dark: "#000000",
+        light: "#ffffff"
+      },
+      errorCorrectionLevel: 'L'
+    }, function (error) {
+      if (error) {
+        console.error(error);
+        alert("データ量が大きすぎてQRコードの生成限界を超えました。");
+      }
     });
     
   } catch (e) {
