@@ -201,31 +201,60 @@ function syncBoardDOM() {
 }
 
 // =========================================
-// QRスキャナーモーダル開閉ロジック（フェーズ1）
+// QRスキャナー・出力モーダル開閉ロジック（フェーズ1・2）
 // =========================================
 
 /**
- * QRスキャナーモーダルを開く
+ * 【入力用】QRスキャナーモーダルを開く
  */
 function openQRScannerModal() {
   const overlay = document.getElementById('qr-scanner-overlay');
   if (overlay) {
     overlay.style.display = 'flex';
-    
-    // 【フェーズ2用】ここで html5-qrcode のカメラ起動処理を呼ぶ予定
+    // 【フェーズ3用】ここで html5-qrcode のカメラ起動処理を呼ぶ予定
     // startQRScanner(); 
   }
 }
 
 /**
- * QRスキャナーモーダルを閉じる
+ * 【入力用】QRスキャナーモーダルを閉じる
  */
 function closeQRScannerModal() {
   const overlay = document.getElementById('qr-scanner-overlay');
   if (overlay) {
     overlay.style.display = 'none';
-    
-    // 【フェーズ2用】ここで html5-qrcode のカメラ停止処理を呼ぶ予定
+    // 【フェーズ3用】ここで html5-qrcode のカメラ停止処理を呼ぶ予定
     // stopQRScanner(); 
+  }
+}
+
+/**
+ * 【出力用】QR表示モーダルを開く
+ * 引数 index: MATCH HISTORY の配列インデックス
+ */
+function openQROutputModal(index) {
+  const overlay = document.getElementById('qr-output-overlay');
+  if (overlay) {
+    // モーダルを表示
+    overlay.style.display = 'flex';
+    
+    // 【フェーズ3用】ここで対象の試合データを取得し、pakoで圧縮してQRを描画する予定
+    // let historyList = getHistoryList();
+    // let matchItem = historyList[index];
+    // generateMatchResultQR(matchItem);
+  }
+}
+
+/**
+ * 【出力用】QR表示モーダルを閉じる
+ */
+function closeQROutputModal() {
+  const overlay = document.getElementById('qr-output-overlay');
+  if (overlay) {
+    overlay.style.display = 'none';
+    
+    // 【フェーズ3用】枠の中に描画されたQRコードの絵（canvas等）を消去・リセットする予定
+    // const qrArea = document.getElementById('qr-output-area');
+    // if (qrArea) qrArea.innerHTML = '<span style="color: #999; font-size: 12px;">(QR Code Space)</span>';
   }
 }

@@ -239,6 +239,7 @@ function renderHistoryList() {
       formattedScore += ` <span style="font-size:13px; color:#A1A1AA; font-weight:normal;">(${match.details})</span>`;
     }
     
+    // ★ 変更点：「QR」ボタンを「PDF」ボタンの左側に追加
     return `
       <div class="roster-item" style="flex-direction:column; align-items:flex-start; gap:8px; background: rgba(255,255,255,0.03); padding: 12px 15px; border-radius: 8px; border: 1px solid #333333; width: 100%; box-sizing: border-box;">
         <div style="font-size:14px; font-weight:bold; color:#FFFFFF; line-height: 1.4; width:100%; word-break: break-all;">
@@ -252,6 +253,7 @@ function renderHistoryList() {
               ? `<button class="roster-edit-btn" style="color:#F59E0B; border-color:#F59E0B; padding: 4px 8px; font-size: 11px;" onclick="resumeHistory(${index})">RESUME</button>` 
               : `<div style="color:#10B981; border:1px solid #10B981; padding: 4px 8px; font-size: 11px; border-radius: 6px; font-weight: bold;">FINISHED</div>`
             }
+            <button class="roster-edit-btn" style="color:#8B5CF6; border-color:#8B5CF6; padding: 4px 8px; font-size: 11px;" onclick="openQROutputModal(${index})">QR</button>
             <button class="roster-edit-btn" style="color:#3B82F6; border-color:#3B82F6; padding: 4px 8px; font-size: 11px;" onclick="exportHistoryToPDF(${index})">PDF</button>
             <button class="roster-delete-btn" style="padding: 4px 8px; font-size: 11px;" onclick="deleteHistory(${index})">DEL</button>
           </div>
