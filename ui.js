@@ -9,7 +9,7 @@ window.onload = function() {
   // 画面の初期描画
   if (typeof renderFlow === 'function') renderFlow();
   
-  // ROSTERのEnterキー登録ショートカット（要素が存在する場合のみ安全に登録してフリーズを防止）
+  // ROSTERのEnterキー登録ショートカット
   const rosterPlayerInput = document.getElementById('roster-player-name');
   const rosterTeamInput = document.getElementById('roster-team-name');
   const rosterSubmitBtn = document.getElementById('roster-submit-btn');
@@ -25,7 +25,7 @@ window.onload = function() {
     });
   }
 
-  // 選手/チーム選択モーダルのCANCELボタンを大型化（DOMの書き換え）
+  // 選手/チーム選択モーダルのCANCELボタンを大型化
   const playerSelectCancelContainer = document.querySelector('#player-select-overlay .back-nav-bar');
   if (playerSelectCancelContainer) {
     playerSelectCancelContainer.style.marginTop = '20px';
@@ -40,11 +40,9 @@ window.onload = function() {
  * 得点板のDOM表示・エフェクト更新処理
  */
 function syncBoardDOM() {
-  // SR選択中であっても、背景のスコアとボタンは常に最新に同期する
   let titleLText = getBoardSideName(true);
   let titleRText = getBoardSideName(false);
   
-  // チーム名が15文字以上の長文の場合は文字縮小クラスを付与
   if (titleLText.length >= 15) {
     document.getElementById("title-text-L").classList.add("long-text");
   } else {
@@ -64,7 +62,6 @@ function syncBoardDOM() {
   document.getElementById("ann-text-L").innerText = annL;
   document.getElementById("ann-text-R").innerText = annR;
 
-  // Undo / Redo ボタンの活性化状態の切り替え
   let btnRedo = document.getElementById("btn-redo");
   if (btnRedo) {
     if (redoStack.length > 0) {
@@ -87,7 +84,6 @@ function syncBoardDOM() {
     }
   }
 
-  // GAME PREPARATION画面などが開いている間は、裏側のトップボタン群を安全に隠す
   let btnRecorder = document.getElementById("btn-recorder");
   let btnClose = document.getElementById("btn-close");
 
@@ -103,14 +99,12 @@ function syncBoardDOM() {
     if (btnClose) btnClose.classList.remove("hidden-by-overlay");
   }
 
-  // 主審カンペの更新（call.jsの関数を呼び出す）
   if (typeof syncVolumeCallカンペ === 'function') {
     syncVolumeCallカンペ();
   }
 
   if (isSelectingRoles) return;
 
-  // セッティングありの時のみ、デュース（発光エフェクト）を許可
   let deuceCheck = flowHasSetting ? (sL >= flowMaxPoints - 1 && sR >= flowMaxPoints - 1 && Math.abs(sL - sR) <= 1) : false;
   if (deuceCheck) {
     document.getElementById("score-val-L").classList.add("deuce");
@@ -120,14 +114,12 @@ function syncBoardDOM() {
     document.getElementById("score-val-R").classList.remove("deuce");
   }
 
-  // 取得ゲーム数の丸（ドット）の描画
   let winTarget = Math.floor((flowMaxGames + 1) / 2);
   let dotsL = document.getElementById("game-dots-L");
   let dotsR = document.getElementById("game-dots-R");
   if (dotsL) dotsL.innerHTML = Array.from({length: winTarget}, (_, i) => `<div class="game-dot" style="background-color: ${i < gL ? '#FFFFFF' : 'rgba(255,255,255,0.12)'}"></div>`).join('');
   if (dotsR) dotsR.innerHTML = Array.from({length: winTarget}, (_, i) => `<div class="game-dot" style="background-color: ${i < gR ? '#FFFFFF' : 'rgba(255,255,255,0.12)'}"></div>`).join('');
 
-  // サーバー・レシーバーの枠（タグ）の描画
   let containerL = document.getElementById("tags-container-L");
   let containerR = document.getElementById("tags-container-R");
 
@@ -194,10 +186,9 @@ function syncBoardDOM() {
 }
 
 // =========================================
-// QRスキャナー・出力モーダル開閉と圧縮/解凍ロジック（フェーズ4）
+// QRスキャナー・出力モーダル開閉と圧縮/解凍ロジック
 // =========================================
 
-// グローバルにカメラインスタンスを保持
 let html5QrCode = null;
 
 /**
@@ -228,21 +219,14 @@ function openQRScannerModal() {
     }
 
     try {
-      // 1. Base64文字列をバイナリ（Uint8Array）に変換
       let binaryString = atob(decodedText);
       let charArray = binaryString.split('').map(c => c.charCodeAt(0));
       let uint8Array = new Uint8Array(charArray);
 
-      // 2. Pakoで解凍
       let decompressedUint8 = pako.inflate(uint8Array);
-      
-      // 3. Uint8Arrayから文字列(UTF-8)に戻す（TextDecoderを使用）
       let decompressedText = new TextDecoder().decode(decompressedUint8);
-      
-      // 4. JSONとしてパース
       let matchData = JSON.parse(decompressedText);
       
-      // 5. ワープ処理へ
       if (typeof resumeMatchFromState === 'function') {
         resumeMatchFromState(matchData);
       } else {
@@ -250,25 +234,29 @@ function openQRScannerModal() {
       }
       
     } catch (e) {
-      alert("QRコードの解読に失敗しました。データが大きすぎるか、形式が間違っています。");
+      alert("QRコードの解読に失敗しました。データ形式が正しくありません。");
       console.error(e);
     }
-
     overlay.style.display = 'none';
   };
 
-  const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+  const cameraConfig = { 
+    facingMode: "environment",
+    width: { min: 1024, ideal: 1920 },
+    height: { min: 768, ideal: 1080 }
+  };
+  const config = { 
+    fps: 15,
+    qrbox: { width: 300, height: 300 } 
+  };
 
-  html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess)
+  html5QrCode.start(cameraConfig, config, onScanSuccess)
     .catch(err => {
-      alert("カメラの起動に失敗しました。ブラウザのカメラアクセス許可を確認してください。");
+      alert("カメラの起動に失敗しました。ブラウザの許可を確認してください。");
       console.error(err);
     });
 }
 
-/**
- * 【入力側】QRスキャナーモーダルを閉じる（キャンセル時）
- */
 function closeQRScannerModal() {
   const overlay = document.getElementById('qr-scanner-overlay');
   if (overlay) {
@@ -282,53 +270,46 @@ function closeQRScannerModal() {
 }
 
 /**
- * 【出力側】QR表示モーダルを開き、データを圧縮してQRコードを描画する
- * 引数 index: MATCH HISTORY の配列インデックス
+ * 【出力側】ダイレクトQR表示（履歴一覧から一発表示）
  */
 function openQROutputModal(index) {
-  const overlay = document.getElementById('qr-output-overlay');
+  const overlay = document.getElementById('qr-direct-overlay');
   if (!overlay) return;
-  overlay.style.display = 'flex';
   
   try {
     let historyList = getHistoryList();
     let matchItem = historyList[index];
     if (!matchItem) throw new Error("指定された試合データが見つかりません。");
     
-    // ディープコピーして元の履歴データを壊さないようにする
     let state = JSON.parse(JSON.stringify(matchItem.state || matchItem));
     
-    // ★大容量化の原因であるUndo履歴（histとredoStack）を空にしてデータを軽量化
+    // 超・徹底的ダイエット（重い履歴データを全て削ぎ落として低密度QRにする）
     state.hist = [];
     state.redoStack = [];
+    state.matchTimeline = [];
+    state.recorderData = null;
     
-    // 1. 状態オブジェクトをJSON文字列化
     let jsonString = JSON.stringify(state);
-    
-    // 2. TextEncoderでUTF-8のバイナリ（Uint8Array）に変換（日本語文字化け防止）
     let uint8Array = new TextEncoder().encode(jsonString);
-    
-    // 3. Pako で超圧縮（deflate）
     let compressedArray = pako.deflate(uint8Array);
     
-    // 4. 圧縮されたバイナリをBase64文字列に変換
     let binaryString = "";
     for (let i = 0; i < compressedArray.length; i++) {
         binaryString += String.fromCharCode(compressedArray[i]);
     }
     let base64String = btoa(binaryString);
     
-    // 5. 空枠の中身をリセットして描画
-    const qrArea = document.getElementById('qr-output-area');
-    qrArea.innerHTML = ""; // 古いQRを消す
+    overlay.innerHTML = ""; // 古いQRを消す
     
-    // ★修正：プロジェクトに導入されている qrcode.min.js の正しい命令文に変更
     let canvas = document.createElement('canvas');
-    qrArea.appendChild(canvas);
+    // ★大修正：CSSによる美しい80%ポップアップスタイルを直接注入
+    canvas.style.cssText = "width: 80vmin; height: 80vmin; max-width: 600px; max-height: 600px; background-color: #ffffff; border-radius: 12px; padding: 15px; box-sizing: border-box; box-shadow: 0 10px 30px rgba(0,0,0,0.8);";
+    overlay.appendChild(canvas);
     
+    // 描画自体は高解像度で行い、縮小表示させることでクッキリさせる
     QRCode.toCanvas(canvas, base64String, {
-      width: 200,
-      margin: 2,
+      width: 800, 
+      margin: 1, // 白枠はpaddingで作ったので、QR自身の余白は最小限にする
       color: {
         dark: "#000000",
         light: "#ffffff"
@@ -341,6 +322,9 @@ function openQROutputModal(index) {
       }
     });
     
+    // 最後に表示する
+    overlay.style.display = 'flex';
+    
   } catch (e) {
     alert("データの圧縮またはQRコードの生成に失敗しました。");
     console.error(e);
@@ -348,15 +332,12 @@ function openQROutputModal(index) {
 }
 
 /**
- * 【出力側】QR表示モーダルを閉じる
+ * 【出力側】ダイレクトQR表示を閉じる（タップされた時）
  */
 function closeQROutputModal() {
-  const overlay = document.getElementById('qr-output-overlay');
+  const overlay = document.getElementById('qr-direct-overlay');
   if (overlay) {
     overlay.style.display = 'none';
-    
-    // モーダルが閉じた後、次に備えて描画されたQRコードを消去・リセットする
-    const qrArea = document.getElementById('qr-output-area');
-    if (qrArea) qrArea.innerHTML = '<span style="color: #999; font-size: 12px;">(QR Code Space)</span>';
+    overlay.innerHTML = ''; // メモリ解放のためにCanvasも消去する
   }
 }
