@@ -41,19 +41,35 @@
   </div>
 
   <div id="board-ui">
+    <!-- ★新設：独立したトップボタン専用ヘッダー -->
+    <div class="board-header-actions">
+      <!-- 左側のボタン群（戻る・進む） -->
+      <div style="display: flex; gap: 15px;">
+        <button class="top-icon-btn" id="btn-undo" onclick="boardUndo()">
+          <svg viewBox="0 0 24 24"><path d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z"/></svg>
+        </button>
+        <button class="top-icon-btn" id="btn-redo" style="color: rgba(255,255,255,0.15); pointer-events: none;" onclick="boardRedo()">
+          <svg viewBox="0 0 24 24"><path d="M18.4 10.6C16.55 8.99 14.15 8 11.5 8c-4.65 0-8.58 3.03-9.96 7.22L3.9 16c1.05-3.19 4.05-5.5 7.6-5.5 1.95 0 3.73.72 5.12 1.88L13 16h9V7l-3.6 3.6z"/></svg>
+        </button>
+      </div>
+      <!-- 右側のボタン群（PDF・閉じる） -->
+      <div style="display: flex; gap: 15px;">
+        <button class="top-icon-btn" id="btn-recorder" onclick="generatePDF(JSON.parse(localStorage.getItem('call_active_backup')) || {})">
+          <svg viewBox="0 0 24 24"><path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+        </button>
+        <button class="top-icon-btn" id="btn-close" onclick="boardClose()">
+          <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- ★改修：広くなったカンペエリア -->
     <div class="board-call-cheat-sheet">
         <div class="board-call-en" id="board-call-en">Love All; Play.</div>
         <div class="board-call-kana" id="board-call-kana">ラブオール；プレイ</div>
     </div>
-    
-    <button class="top-icon-btn" id="btn-undo" style="z-index: 1000;" onclick="boardUndo()"><svg viewBox="0 0 24 24"><path d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z"/></svg></button>
-    <button class="top-icon-btn" id="btn-redo" style="z-index: 1000; color: rgba(255,255,255,0.15); pointer-events: none;" onclick="boardRedo()"><svg viewBox="0 0 24 24"><path d="M18.4 10.6C16.55 8.99 14.15 8 11.5 8c-4.65 0-8.58 3.03-9.96 7.22L3.9 16c1.05-3.19 4.05-5.5 7.6-5.5 1.95 0 3.73.72 5.12 1.88L13 16h9V7l-3.6 3.6z"/></svg></button>
-    
-    <button class="top-icon-btn" id="btn-recorder" style="right: 55px; width: 45px; z-index: 1000;" onclick="generatePDF(JSON.parse(localStorage.getItem('call_active_backup')) || {})">
-      <svg viewBox="0 0 24 24"><path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
-    </button>
-    <button class="top-icon-btn" id="btn-close" style="z-index: 1000;" onclick="boardClose()"><svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>
 
+    <!-- 以下の得点板レイアウト（名前、点数など）は一切変更なし -->
     <div class="board-layout">
       <div class="side-panel" onclick="scoreAdd(true)">
         <div class="side-header-space"><div class="side-title-text" id="title-text-L"></div></div>
@@ -207,7 +223,7 @@
   </div>
 </div>
 
-<!-- ★新設【フェーズ2】試合結果QR表示用モーダル（出力用） -->
+<!-- 【フェーズ2】試合結果QR表示用モーダル（出力用） -->
 <div id="qr-output-overlay" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.87); backdrop-filter: blur(5px); z-index: 400; align-items: center; justify-content: center; padding: 20px; overflow-y: auto;">
   <div style="width: 100%; max-width: 350px; background: #1C1C1E; border-radius: 12px; padding: 20px; border: 1px solid #333333; position: relative;">
     <button class="roster-close-icon-btn" onclick="closeQROutputModal()">
@@ -216,7 +232,6 @@
     <div class="roster-header" style="margin-bottom: 10px;">MATCH RESULT QR</div>
     <div style="color: #A1A1AA; font-size: 13px; text-align: center; margin-bottom: 10px;">本部のカメラにかざして結果を送信してください</div>
     
-    <!-- ★ 将来QRコード画像が描画される枠（白背景で用意） -->
     <div style="display: flex; justify-content: center; align-items: center; background: #FFFFFF; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
       <div id="qr-output-area" style="width: 200px; height: 200px; background: #FFFFFF; display: flex; justify-content: center; align-items: center;">
         <span style="color: #999; font-size: 12px;">(QR Code Space)</span>

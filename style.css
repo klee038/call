@@ -257,14 +257,29 @@ button, .side-panel, .player-tag {
   min-height: 0;
 }
 
+/* ★新設：得点板のトップボタン用ヘッダー */
+.board-header-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: max(10px, env(safe-area-inset-top)) 15px 5px 15px;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+
+/* ★改修：カンペエリアの拡張と高さの完全固定 */
 .board-call-cheat-sheet {
   background-color: rgba(28, 28, 30, 0.8);
   border-radius: 12px;
-  margin: max(10px, env(safe-area-inset-top)) 10px 0 10px !important;
-  padding: 5px 65px !important; 
+  margin: 0 10px 10px 10px !important;
+  padding: 5px 15px !important; /* 左右の広い余白を削って横幅をフル活用 */
   z-index: 10;
-  height: 140px !important; 
-  flex-shrink: 0 !important;
+  height: 165px !important; /* 高さを広げて見やすく */
+  min-height: 165px !important;
+  max-height: 165px !important;
+  flex-shrink: 0 !important; /* 文字数によって絶対に高さが変わらないよう固定 */
+  flex-grow: 0 !important;
   display: flex !important;
   flex-direction: column !important;
   justify-content: center !important; 
@@ -296,10 +311,10 @@ button, .side-panel, .player-tag {
   width: 100%; 
 }
 
+/* ★改修：トップボタンの絶対配置(absolute)を廃止 */
 .top-icon-btn {
-  position: absolute;
-  top: max(10px, env(safe-area-inset-top));
-  height: 140px;
+  height: 40px;
+  width: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -323,10 +338,6 @@ button, .side-panel, .player-tag {
   height: 28px;
   fill: currentColor;
 }
-
-#btn-undo { left: 10px; width: 45px; }
-#btn-redo { left: 55px; width: 45px; }
-#btn-close { right: 10px; width: 45px; }
 
 .board-layout {
   display: flex;
