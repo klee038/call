@@ -9,7 +9,7 @@ window.onload = function() {
   // 画面の初期描画
   if (typeof renderFlow === 'function') renderFlow();
   
-  // ROSTERのEnterキー登録ショートカット
+  // ROSTERのEnterキー登録ショートカット（要素が存在する場合のみ安全に登録してフリーズを防止）
   const rosterPlayerInput = document.getElementById('roster-player-name');
   const rosterTeamInput = document.getElementById('roster-team-name');
   const rosterSubmitBtn = document.getElementById('roster-submit-btn');
@@ -194,7 +194,7 @@ function syncBoardDOM() {
 }
 
 // =========================================
-// QRスキャナー・出力モーダル開閉と圧縮/解凍ロジック（フェーズ4改修）
+// QRスキャナー・出力モーダル開閉と圧縮/解凍ロジック
 // =========================================
 
 let html5QrCode = null;
@@ -208,7 +208,7 @@ function openQRScannerModal() {
   overlay.style.display = 'flex';
 
   if (typeof Html5Qrcode === 'undefined') {
-    alert("QRコード読み取り機能が読み込まれていません。");
+    alert("QRコード読み取り機能が読み込まれていません。通信環境を確認してください。");
     return;
   }
 
@@ -245,10 +245,11 @@ function openQRScannerModal() {
       alert("QRコードの解読に失敗しました。データ形式が正しくありません。");
       console.error(e);
     }
+
     overlay.style.display = 'none';
   };
 
-  // 高解像度（フルHD）の強制とフォーカス領域の指定
+  // ★修正：高解像度の強制とフォーカス領域の指定（読み取り精度を劇的に向上）
   const cameraConfig = { 
     facingMode: "environment",
     width: { min: 1024, ideal: 1920 },
@@ -261,7 +262,7 @@ function openQRScannerModal() {
 
   html5QrCode.start(cameraConfig, config, onScanSuccess)
     .catch(err => {
-      alert("カメラの起動に失敗しました。ブラウザの許可を確認してください。");
+      alert("カメラの起動に失敗しました。ブラウザのカメラアクセス許可を確認してください。");
       console.error(err);
     });
 }
@@ -291,11 +292,15 @@ function openQROutputModal(index) {
     let matchItem = historyList[index];
     if (!matchItem) throw new Error("指定された試合データが見つかりません。");
     
+    // ディープコピーして元の履歴データを壊さないようにする
     let state = JSON.parse(JSON.stringify(matchItem.state || matchItem));
     
-    // Undo履歴を空にして軽量化
+    // ★超・徹底的ダイエット（重い履歴データを全て削ぎ落として低密度QRにする）
     state.hist = [];
     state.redoStack = [];
+    state.matchTimeline = [];
+    state.recorderData = null;
+    // ※ matchScoreHistory (ゲームカウント履歴) は軽いのでそのまま残す
     
     let jsonString = JSON.stringify(state);
     let uint8Array = new TextEncoder().encode(jsonString);
@@ -309,20 +314,18 @@ function openQROutputModal(index) {
     
     const qrArea = document.getElementById('qr-output-area');
     qrArea.innerHTML = ""; 
-    
-    // ★修正：200pxのガチガチの固定サイズ制限をJavaScriptから強制的に解除する
     qrArea.style.width = "100%";
     qrArea.style.height = "auto";
     
     let canvas = document.createElement('canvas');
-    // iPhoneのカメラが焦点・解像度を合わせやすいよう、キャンバスを枠いっぱいに表示させる
     canvas.style.width = "100%";
     canvas.style.height = "auto";
     qrArea.appendChild(canvas);
     
+    // ★修正：誤り訂正を最低(L)にしてドットを粗くし、スケールで大きく描画する
     QRCode.toCanvas(canvas, base64String, {
       margin: 2,
-      scale: 5, // ★修正：1ドットの描画サイズを大きくし、潰れず鮮明に表示させる
+      scale: 6, 
       color: {
         dark: "#000000",
         light: "#ffffff"
@@ -346,7 +349,6 @@ function closeQROutputModal() {
   if (overlay) {
     overlay.style.display = 'none';
     const qrArea = document.getElementById('qr-output-area');
-    // リセット時も親要素のスタイルを元に戻しておく
     if (qrArea) {
       qrArea.innerHTML = '<span style="color: #999; font-size: 12px;">(QR Code Space)</span>';
       qrArea.style.width = "200px";
