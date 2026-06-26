@@ -186,11 +186,11 @@ function syncBoardDOM() {
 // QRスキャナー・出力モーダル開閉と圧縮/解凍ロジック
 // =========================================
 
+// ★修正：カメラ一時停止(pause)をやめ、完全に停止・破棄(stop)する元の安全なロジックに戻す
 let html5QrCode = null;
-let isCameraPaused = false;
 
 /**
- * 【入力側】QRスキャナーモーダルを開き、カメラを起動（または再開）する
+ * 【入力側】QRスキャナーモーダルを開き、カメラを起動する
  */
 function openQRScannerModal() {
   const overlay = document.getElementById('qr-scanner-overlay');
@@ -202,18 +202,22 @@ function openQRScannerModal() {
     return;
   }
 
-  if (html5QrCode && isCameraPaused) {
-    html5QrCode.resume();
-    isCameraPaused = false;
-    return;
+  // もし前のカメラが残っていれば確実にストップして破棄する
+  if (html5QrCode) {
+    try { 
+      html5QrCode.stop().then(() => { html5QrCode = null; }).catch(e => { html5QrCode = null; });
+    } catch(e) { html5QrCode = null; }
   }
 
+  // 毎回新しいインスタンスとしてクリーンに起動する
   html5QrCode = new Html5Qrcode("qr-reader");
 
   const onScanSuccess = (decodedText, decodedResult) => {
+    // 成功したらすぐにカメラを完全に停止(stop)し、リソースを手放す
     if (html5QrCode) {
-      html5QrCode.pause();
-      isCameraPaused = true;
+      html5QrCode.stop().then(() => {
+        html5QrCode = null;
+      }).catch(err => console.log("カメラ停止エラー", err));
     }
 
     try {
@@ -234,11 +238,6 @@ function openQRScannerModal() {
     } catch (e) {
       alert("QRコードの解読に失敗しました。データ形式が正しくありません。");
       console.error(e);
-      if (html5QrCode && isCameraPaused) {
-        html5QrCode.resume();
-        isCameraPaused = false;
-      }
-      return; 
     }
     overlay.style.display = 'none';
   };
@@ -253,7 +252,6 @@ function openQRScannerModal() {
     .catch(err => {
       alert("カメラの起動に失敗しました。ブラウザの許可を確認してください。");
       console.error(err);
-      html5QrCode = null;
     });
 }
 
@@ -261,9 +259,11 @@ function closeQRScannerModal() {
   const overlay = document.getElementById('qr-scanner-overlay');
   if (overlay) {
     overlay.style.display = 'none';
-    if (html5QrCode && !isCameraPaused) {
-      html5QrCode.pause();
-      isCameraPaused = true;
+    // 閉じる時も完全に停止(stop)してバッテリー消費を防ぐ
+    if (html5QrCode) {
+      html5QrCode.stop().then(() => {
+        html5QrCode = null;
+      }).catch(err => console.log("カメラ停止エラー", err));
     }
   }
 }
@@ -298,18 +298,19 @@ function openQROutputModal(index) {
     
     overlay.innerHTML = ""; 
     
-    // ★大修正：ピクセル指定を外し、CSSの枠サイズ（80vw / 80vh）のみで完全に制限する
+    // ★大修正：Safariのツールバー等に影響されない、最強の「はみ出し防止CSS」
     let qrContainer = document.createElement('div');
-    qrContainer.style.cssText = "width: 80vw; height: 80vw; max-width: 400px; max-height: 400px; background-color: #ffffff; border-radius: 12px; padding: 15px; box-sizing: border-box; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center;";
+    // 幅・高さを画面の短い方(vmin)の80%に設定し、絶対に画面からはみ出さないようにロック
+    qrContainer.style.cssText = "width: 80vmin; height: 80vmin; max-width: 400px; max-height: 400px; background-color: #ffffff; border-radius: 12px; padding: 15px; box-sizing: border-box; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; overflow: hidden;";
     
     let canvas = document.createElement('canvas');
-    // canvasは親のコンテナに100%で従う
-    canvas.style.cssText = "width: 100% !important; height: 100% !important; object-fit: contain;";
+    // キャンバスは親(qrContainer)の内部サイズ(100%)に完全に追従する
+    canvas.style.cssText = "width: 100% !important; height: 100% !important; max-width: 100% !important; max-height: 100% !important; object-fit: contain; display: block;";
     
     qrContainer.appendChild(canvas);
     overlay.appendChild(qrContainer);
     
-    // ★ピクセルサイズの強制指定（width/scale）を削除し、コンテナの大きさに自動で合わせる
+    // ピクセル指定を外し、CSSの枠サイズに自動で合わせる
     QRCode.toCanvas(canvas, base64String, {
       margin: 1,
       color: {
