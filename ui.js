@@ -44,10 +44,7 @@ function syncBoardDOM() {
   let titleLText = getBoardSideName(true);
   let titleRText = getBoardSideName(false);
   
-  document.getElementById("title-text-L").innerText = titleLText;
-  document.getElementById("title-text-R").innerText = titleRText;
-  
-  // ★機能プラス：チーム名が15文字以上の長文の場合は文字縮小クラスを付与（間延び・押し負け防止）
+  // チーム名が15文字以上の長文の場合は文字縮小クラスを付与
   if (titleLText.length >= 15) {
     document.getElementById("title-text-L").classList.add("long-text");
   } else {
@@ -60,6 +57,8 @@ function syncBoardDOM() {
     document.getElementById("title-text-R").classList.remove("long-text");
   }
 
+  document.getElementById("title-text-L").innerText = titleLText;
+  document.getElementById("title-text-R").innerText = titleRText;
   document.getElementById("score-val-L").innerText = sL;
   document.getElementById("score-val-R").innerText = sR;
   document.getElementById("ann-text-L").innerText = annL;
@@ -79,7 +78,6 @@ function syncBoardDOM() {
   
   let btnUndo = document.getElementById("btn-undo");
   if (btnUndo) {
-    // 0-0でも戻れるように条件を緩和
     if (hist.length > 0 || (sL === 0 && sR === 0 && !isOver && !isSelectingRoles)) {
       btnUndo.style.color = "rgba(255,255,255,0.7)";
       btnUndo.style.pointerEvents = "auto";
@@ -89,7 +87,7 @@ function syncBoardDOM() {
     }
   }
 
-  // ★構想1：GAME PREPARATION画面などが開いている間は、裏側のトップボタン群を安全に隠す
+  // GAME PREPARATION画面などが開いている間は、裏側のトップボタン群を安全に隠す
   let btnRecorder = document.getElementById("btn-recorder");
   let btnClose = document.getElementById("btn-close");
 
@@ -110,7 +108,6 @@ function syncBoardDOM() {
     syncVolumeCallカンペ();
   }
 
-  // タグの付与などは、SR選択中(0-0開始前)はエラー防止のためブロック
   if (isSelectingRoles) return;
 
   // セッティングありの時のみ、デュース（発光エフェクト）を許可
@@ -138,7 +135,6 @@ function syncBoardDOM() {
     let classL = srvL ? "server" : "receiver";
     let classR = !srvL ? "server" : "receiver";
 
-    // ★機能プラス：プレイヤー名が12文字以上の長文の場合は文字縮小クラスを付与
     let extL = nL1.length >= 12 ? " long-text" : "";
     let extR = nR1.length >= 12 ? " long-text" : "";
 
@@ -149,13 +145,11 @@ function syncBoardDOM() {
     let p1S_L = srvL && ((sL % 2 === 0) === pL1IsRight);
     let p1S_R = !srvL && ((sR % 2 === 0) === pR1IsRight);
 
-    // 左チームは既存の正しいロジックを維持
     let boxFarNameL = pL1IsRight ? nL2 : nL1;
     let boxNearNameL = pL1IsRight ? nL1 : nL2;
     let boxFarClassL = "";
     let boxNearClassL = "";
     
-    // 右チームの物理コートに合わせた修正（nR1とnR2を入れ替え）
     let boxFarNameR = pR1IsRight ? nR1 : nR2;
     let boxNearNameR = pR1IsRight ? nR2 : nR1;
     let boxFarClassR = "";
@@ -181,7 +175,6 @@ function syncBoardDOM() {
       }
     }
     
-    // ★機能プラス：プレイヤー名が12文字以上の長文の場合は文字縮小クラスを付与
     let extFarL = boxFarNameL.length >= 12 ? " long-text" : "";
     let extNearL = boxNearNameL.length >= 12 ? " long-text" : "";
     let extFarR = boxFarNameR.length >= 12 ? " long-text" : "";
@@ -201,60 +194,157 @@ function syncBoardDOM() {
 }
 
 // =========================================
-// QRスキャナー・出力モーダル開閉ロジック（フェーズ1・2）
+// QRスキャナー・出力モーダル開閉と圧縮/解凍ロジック（フェーズ4）
 // =========================================
 
+// グローバルにカメラインスタンスを保持
+let html5QrCode = null;
+
 /**
- * 【入力用】QRスキャナーモーダルを開く
+ * 【入力側】QRスキャナーモーダルを開き、カメラを起動する
  */
 function openQRScannerModal() {
   const overlay = document.getElementById('qr-scanner-overlay');
-  if (overlay) {
-    overlay.style.display = 'flex';
-    // 【フェーズ3用】ここで html5-qrcode のカメラ起動処理を呼ぶ予定
-    // startQRScanner(); 
+  if (!overlay) return;
+  overlay.style.display = 'flex';
+
+  if (typeof Html5Qrcode === 'undefined') {
+    alert("QRコード読み取り機能が読み込まれていません。通信環境を確認してください。");
+    return;
   }
+
+  // 既にインスタンスがあればリセット
+  if (html5QrCode) {
+    try { html5QrCode.stop(); } catch(e) {}
+    html5QrCode = null;
+  }
+
+  html5QrCode = new Html5Qrcode("qr-reader");
+
+  // QR読み取り成功時の処理（インポートと強制ワープ）
+  const onScanSuccess = (decodedText, decodedResult) => {
+    // 成功したらすぐにカメラを止める
+    if (html5QrCode) {
+      html5QrCode.stop().then(() => {
+        html5QrCode = null;
+      }).catch(err => console.log("カメラ停止エラー", err));
+    }
+
+    try {
+      // 1. Base64文字列をバイナリ（Uint8Array）に変換
+      let binaryString = atob(decodedText);
+      let charArray = binaryString.split('').map(c => c.charCodeAt(0));
+      let uint8Array = new Uint8Array(charArray);
+
+      // 2. Pakoで解凍し、JSON文字列に戻す
+      let decompressedText = pako.inflate(uint8Array, { to: 'string' });
+      
+      // 3. JSONとしてパース
+      let matchData = JSON.parse(decompressedText);
+      
+      // 4. history.js のワープ専用関数に投げて完全コピーさせる
+      if (typeof resumeMatchFromState === 'function') {
+        resumeMatchFromState(matchData);
+      } else {
+        alert("復元・ワープ用の関数が見つかりません。");
+      }
+      
+    } catch (e) {
+      alert("QRコードの解読に失敗しました。データが大きすぎるか、形式が間違っています。");
+      console.error(e);
+    }
+
+    // モーダルを閉じる
+    overlay.style.display = 'none';
+  };
+
+  // カメラの設定（背面カメラ指定、fps控えめ）
+  const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+
+  html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess)
+    .catch(err => {
+      alert("カメラの起動に失敗しました。ブラウザのカメラアクセス許可を確認してください。");
+      console.error(err);
+    });
 }
 
 /**
- * 【入力用】QRスキャナーモーダルを閉じる
+ * 【入力側】QRスキャナーモーダルを閉じる（キャンセル時）
  */
 function closeQRScannerModal() {
   const overlay = document.getElementById('qr-scanner-overlay');
   if (overlay) {
     overlay.style.display = 'none';
-    // 【フェーズ3用】ここで html5-qrcode のカメラ停止処理を呼ぶ予定
-    // stopQRScanner(); 
+    if (html5QrCode) {
+      html5QrCode.stop().then(() => {
+        html5QrCode = null;
+      }).catch(err => console.log("カメラ停止エラー", err));
+    }
   }
 }
 
 /**
- * 【出力用】QR表示モーダルを開く
+ * 【出力側】QR表示モーダルを開き、データを圧縮してQRコードを描画する
  * 引数 index: MATCH HISTORY の配列インデックス
  */
 function openQROutputModal(index) {
   const overlay = document.getElementById('qr-output-overlay');
-  if (overlay) {
-    // モーダルを表示
-    overlay.style.display = 'flex';
+  if (!overlay) return;
+  overlay.style.display = 'flex';
+  
+  try {
+    let historyList = getHistoryList();
+    let matchItem = historyList[index];
+    if (!matchItem) throw new Error("指定された試合データが見つかりません。");
     
-    // 【フェーズ3用】ここで対象の試合データを取得し、pakoで圧縮してQRを描画する予定
-    // let historyList = getHistoryList();
-    // let matchItem = historyList[index];
-    // generateMatchResultQR(matchItem);
+    // matchItem.state があればそれを使う（なければ matchItem 自身を state とみなす）
+    let state = matchItem.state || matchItem;
+    
+    // 1. 状態オブジェクトをJSON文字列化
+    let jsonString = JSON.stringify(state);
+    
+    // 2. テキストエンコーダーで安全なバイナリ（Uint8Array）に変換
+    let uint8Array = new TextEncoder().encode(jsonString);
+    
+    // 3. Pako で超圧縮（deflate）
+    let compressedArray = pako.deflate(uint8Array);
+    
+    // 4. 圧縮されたバイナリをBase64文字列に変換（文字化け防止）
+    let binaryString = "";
+    for (let i = 0; i < compressedArray.length; i++) {
+        binaryString += String.fromCharCode(compressedArray[i]);
+    }
+    let base64String = btoa(binaryString);
+    
+    // 5. 空枠の中身をリセットして、qrcode.js でQRコードを描画
+    const qrArea = document.getElementById('qr-output-area');
+    qrArea.innerHTML = ""; // 古いQRを消す
+    
+    new QRCode(qrArea, {
+      text: base64String,
+      width: 200,
+      height: 200,
+      colorDark : "#000000",
+      colorLight : "#ffffff",
+      correctLevel : QRCode.CorrectLevel.L // 圧縮率優先（データ量が多いので復元率は低めに設定）
+    });
+    
+  } catch (e) {
+    alert("データの圧縮またはQRコードの生成に失敗しました。");
+    console.error(e);
   }
 }
 
 /**
- * 【出力用】QR表示モーダルを閉じる
+ * 【出力側】QR表示モーダルを閉じる
  */
 function closeQROutputModal() {
   const overlay = document.getElementById('qr-output-overlay');
   if (overlay) {
     overlay.style.display = 'none';
     
-    // 【フェーズ3用】枠の中に描画されたQRコードの絵（canvas等）を消去・リセットする予定
-    // const qrArea = document.getElementById('qr-output-area');
-    // if (qrArea) qrArea.innerHTML = '<span style="color: #999; font-size: 12px;">(QR Code Space)</span>';
+    // モーダルが閉じた後、次に備えて描画されたQRコードを消去・リセットする
+    const qrArea = document.getElementById('qr-output-area');
+    if (qrArea) qrArea.innerHTML = '<span style="color: #999; font-size: 12px;">(QR Code Space)</span>';
   }
 }

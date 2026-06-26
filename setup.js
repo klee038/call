@@ -71,7 +71,7 @@ function renderFlow() {
 
   updateBoardFormatInfo();
 
-  // ★変更点：Step1（MATCH FORMAT）画面の左上アイコンにQRボタンを追加し、隙間を揃える
+  // 左上のアイコン配置
   let leftHeaderActions = `
     <div style="display: flex; gap: 15px; align-items: center;">
       <button class="setting-icon-btn" onclick="openQRScannerModal()">
@@ -83,7 +83,6 @@ function renderFlow() {
     </div>
   `;
 
-  // ★変更点：Step2（PLAYERS）画面の左上アイコンにQRボタンを追加し、隙間を揃える
   if (flowStep === 2) {
     leftHeaderActions = `
       <div style="display: flex; gap: 15px; align-items: center;">
@@ -106,7 +105,6 @@ function renderFlow() {
     `;
   }
 
-  // 上部に配置するアイコン群の共通HTML
   const headerActionsHtml = `
     <div class="flow-header-actions">
       ${leftHeaderActions}
@@ -182,7 +180,6 @@ function renderFlow() {
   else if (flowStep === 2) {
     const selectIconSvg = `<svg viewBox="0 0 24 24"><path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"/></svg>`;
 
-    // 変数が初期値のままなら、画面の入力欄は空にしてプレースホルダー表示させる
     let dispPL1 = (txtPL1 === "PlayerA1") ? "" : txtPL1;
     let dispPR1 = (txtPR1 === "PlayerB1") ? "" : txtPR1;
     let dispPL2 = (txtPL2 === "PlayerA2") ? "" : txtPL2;
@@ -272,7 +269,6 @@ function renderFlow() {
 
     if (winnerChoice !== null) {
       if (!flowHasCourtSelect) {
-        // コート選択なしの場合は、WINNERがサーブ/レシーブを選んだ時点でLOSERの選択をスキップして即スタート
         html += `<button class="action-btn" onclick="finalizeAndStart()">START MATCH</button>`;
       } else {
         let actualLoserName = (tossWinner === 'L') ? nameR : nameL;
@@ -309,9 +305,6 @@ function renderFlow() {
   }
 }
 
-// =========================================
-// PLAYERS画面での左右一発入れ替え処理
-// =========================================
 function swapPlayersSides() {
   const tlEl = document.getElementById("input-tl");
   const trEl = document.getElementById("input-tr");
@@ -337,9 +330,6 @@ function swapPlayersSides() {
   }
 }
 
-// =========================================
-// PLAYERS画面の内容を名簿に直接保存する関数
-// =========================================
 function saveCurrentPlayersToRoster() {
   let rosterData = [];
   try {
@@ -408,7 +398,6 @@ function flowNext() {
     txtTL = tLVal;
     txtTR = tRVal;
 
-    // 何も入力されず空っぽ("")だった場合は、自動で PlayerA1 などの初期値が裏側補填される
     txtPL1 = pL1Val ? pL1Val : "PlayerA1";
     txtPR1 = pR1Val ? pR1Val : "PlayerB1";
     if (document.getElementById("input-pl2")) txtPL2 = pL2Val ? pL2Val : "PlayerA2";
@@ -434,9 +423,6 @@ function flowBack() {
   }
 }
 
-// =========================================
-// デフォルト設定モーダルの制御（APPLYで即時反映）
-// =========================================
 let tempSettings = {};
 
 function openSettingModal() {
@@ -557,9 +543,6 @@ function renderSettingModal() {
   `;
 }
 
-// =========================================
-// データリセット用機能
-// =========================================
 function clearAllHistory() {
   if (confirm("試合履歴を全て削除します。\n（元には戻せません）よろしいですか？")) {
     localStorage.removeItem('call_match_history');
@@ -575,9 +558,6 @@ function factoryResetApp() {
   }
 }
 
-// =========================================
-// Wake Lock API (画面常時点灯ロック) 管理
-// =========================================
 let wakeLock = null;
 let wakeLockTimer = null;
 
@@ -606,13 +586,10 @@ function resetWakeLockTimer() {
     releaseWakeLock();
     return;
   }
-  
   requestWakeLock();
-  
   if (wakeLockTimer !== null) {
     clearTimeout(wakeLockTimer);
   }
-  
   wakeLockTimer = setTimeout(() => {
     releaseWakeLock();
   }, defaultSettings.wakeLockMinutes * 60 * 1000);
@@ -620,3 +597,51 @@ function resetWakeLockTimer() {
 
 document.addEventListener('touchstart', resetWakeLockTimer, {passive: true});
 document.addEventListener('click', resetWakeLockTimer, {passive: true});
+
+
+// =========================================
+// 新設：QRスキャンデータの受け取りと自動ワープ処理
+// =========================================
+
+/**
+ * QRコードから復元されたJSONオブジェクトを受け取り、
+ * 変数へ代入した上で、適切な画面へジャンプさせる。
+ */
+function applyScannedMatchData(data) {
+  // 不正なデータの場合はブロック
+  if (!data || typeof data !== 'object') {
+    alert("無効なデータ形式です。");
+    return;
+  }
+
+  // 1. 本部から受け取ったデータをグローバル変数へ代入
+  // booleanや数値は、型が保証されるようにフォールバック（初期値）付きで安全に代入します
+  flowIsDouble = (data.d !== undefined) ? data.d : true;
+  flowMaxGames = (data.g !== undefined) ? data.g : 3;
+  flowMaxPoints = (data.p !== undefined) ? data.p : 15;
+  flowHasSetting = (data.s !== undefined) ? data.s : true;
+  flowHasCourtSelect = (data.hc !== undefined) ? data.hc : true;
+  
+  // チーム名と選手名の代入
+  txtTL = data.tL || "";
+  txtTR = data.tR || "";
+  
+  // 配列 data.n [L1, L2, R1, R2] から選手名を取り出す
+  let names = Array.isArray(data.n) ? data.n : [];
+  txtPL1 = names[0] || "";
+  txtPL2 = flowIsDouble ? (names[1] || "") : "";
+  txtPR1 = names[2] || "";
+  txtPR2 = flowIsDouble ? (names[3] || "") : "";
+
+  // 2. 画面の自動ワープ処理
+  if (flowHasCourtSelect) {
+    // 【通常ルート】コート選択ありなら、手入力をスキップして即トス画面（Step 3）へ
+    flowStep = 3;
+  } else {
+    // 【エレベーター方式ルート】コート選択なしなら、確認のため設定画面（Step 1）に留まる
+    flowStep = 1;
+  }
+
+  // 3. UIの再描画
+  renderFlow();
+}

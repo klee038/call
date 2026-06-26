@@ -29,11 +29,9 @@ function boardSave() {
  * アンドゥ（一手戻る）
  */
 function boardUndo() {
-  // ★バグ修正：0-0のスコア画面でUndoを押した時は、TOSSではなくGAME PREPARATION画面（陣形反転トグル）を再度呼び出す
   if (sL === 0 && sR === 0 && !isOver && !isSelectingRoles) {
     isSelectingRoles = true;
     
-    // PDF公式記録ノートに記録された「最初のサーバー/レシーバー情報」を1つ取り消す（二重記録防止）
     if (typeof Recorder !== 'undefined' && Recorder.data && Recorder.data.timeline) {
         let lastLog = Recorder.data.timeline[Recorder.data.timeline.length - 1];
         if (lastLog && lastLog.type === 'SR') {
@@ -224,48 +222,39 @@ function renderHistoryList() {
   
   listEl.innerHTML = historyList.map((match, index) => {
     let isInterrupted = match.status === "INTERRUPTED";
-    // ★ 状態に応じたベースカラー（中断時はオレンジ、完了時は緑）
     let statusColor = isInterrupted ? "#F59E0B" : "#10B981";
     
-    // チーム名と選手名の分離
     let st = match.state || match || {};
     let isD = st.hasOwnProperty('flowIsDouble') ? st.flowIsDouble : true;
     let pL = st.nL1 ? (isD ? `${st.nL1} & ${st.nL2}` : st.nL1) : (match.title ? match.title.split(' vs ')[0] : "");
     let pR = st.nR1 ? (isD ? `${st.nR1} & ${st.nR2}` : st.nR1) : (match.title ? match.title.split(' vs ')[1] : "");
     
-    // 前後の空白を削除（カッコは付けない）
     let tL = st.tL ? st.tL.trim() : "";
     let tR = st.tR ? st.tR.trim() : "";
 
-    // ★ 5行レイアウト用の各行HTML生成（空欄の場合は出力しないため行が詰まる）
     let teamLHtml = tL ? `<div style="font-size:12px; color:#94A3B8;">${tL}</div>` : "";
     let playerLHtml = `<div style="font-size:13px; color:#FFFFFF; font-weight:bold;">${pL}</div>`;
     let vsHtml = `<div style="font-size:10px; color:#64748B; margin: 4px 0;">vs</div>`;
     let teamRHtml = tR ? `<div style="font-size:12px; color:#94A3B8;">${tR}</div>` : "";
     let playerRHtml = `<div style="font-size:13px; color:#FFFFFF; font-weight:bold;">${pR}</div>`;
 
-    // スコアフォーマット
     let formattedScore = match.score ? match.score.replace(/\s+/g, '') : "";
     if (match.details) {
       formattedScore += ` <span style="font-size:12px; color:#A1A1AA; font-weight:normal;">(${match.details})</span>`;
     }
     
-    // ★ 日付と時刻の間のスペースを改行(<br>)に置換して2段表示にする
     let dateStr = match.date || '';
     let formattedDate = dateStr.replace(' ', '<br>');
     
-    // QRアイコンSVG
     let qrSvg = `<svg viewBox="0 0 24 24" style="width: 16px; height: 16px; fill: currentColor;"><path d="M3 3h8v8H3V3zm2 2v4h4V5H5zm8-2h8v8h-8V3zm2 2v4h4V5h-4zM3 13h8v8H3v-8zm2 2v4h4v-4H5zm13-2h3v2h-3v-2zm-3 0h2v2h-2v-2zm3 3h3v2h-3v-2zm-3 0h2v4h-2v-4zm3 3h3v2h-3v-2z"/></svg>`;
 
     return `
       <div class="roster-item" style="position: relative; flex-direction: column; align-items: flex-start; gap: 8px; background: rgba(255,255,255,0.03); padding: 15px; border-radius: 8px; border: 1px solid #333333; width: 100%; box-sizing: border-box;">
         
-        <!-- ★ 右上絶対配置のQRボタン（色はステータスに連動） -->
         <button class="roster-edit-btn" style="position: absolute; top: 15px; right: 15px; color: ${statusColor}; border-color: ${statusColor}; padding: 6px; display: flex; align-items: center; justify-content: center; border-radius: 6px; background: transparent;" onclick="openQROutputModal(${index})">
           ${qrSvg}
         </button>
 
-        <!-- ★ 対戦カード (ゆったりとした最大5行レイアウト / 右のQRボタンと被らないよう幅制限) -->
         <div style="line-height: 1.3; width: calc(100% - 40px); word-break: break-all;">
           ${teamLHtml}
           ${playerLHtml}
@@ -274,10 +263,8 @@ function renderHistoryList() {
           ${playerRHtml}
         </div>
         
-        <!-- スコア -->
         <div style="font-size:16px; color:#10B981; font-weight: bold; margin-top: 6px; margin-bottom: 2px;">${formattedScore}</div>
         
-        <!-- フッターエリア (日付2段・アクションボタン) -->
         <div style="display: flex; justify-content: space-between; align-items: flex-end; width: 100%; margin-top: 4px;">
           <div style="font-size:11px; color:#94A3B8; line-height: 1.3;">${formattedDate}</div>
           <div style="display: flex; gap: 8px; align-items: center;">
@@ -310,6 +297,34 @@ function resumeHistory(index) {
   let matchItem = historyList[index];
   let state = matchItem.state || matchItem;
 
+  // 抽出した状態をアプリに適用してワープさせる（新設した共通関数を利用）
+  resumeMatchFromState(state);
+
+  // 履歴から削除して上書き
+  historyList.splice(index, 1);
+  localStorage.setItem('call_match_history', JSON.stringify(historyList));
+  if (typeof saveActiveBackup === 'function') saveActiveBackup();
+
+  closeHistoryModal();
+}
+
+function exportHistoryToPDF(index) {
+  let historyList = getHistoryList();
+  let matchItem = historyList[index];
+  if (!matchItem) return;
+  let state = matchItem.state || matchItem;
+  
+  if (typeof generatePDF === 'function') {
+    generatePDF(state);
+  } else {
+    alert("PDF生成機能が読み込まれていません。ページをリロードしてください。");
+  }
+}
+
+// =========================================
+// 新設：QRなどから復元した状態(State)で強制ワープする共通エンジン
+// =========================================
+function resumeMatchFromState(state) {
   flowIsDouble = state.hasOwnProperty('flowIsDouble') ? state.flowIsDouble : true;
   flowMaxGames = state.hasOwnProperty('flowMaxGames') ? state.flowMaxGames : 3;
   flowMaxPoints = state.hasOwnProperty('flowMaxPoints') ? state.flowMaxPoints : 15;
@@ -337,10 +352,12 @@ function resumeHistory(index) {
   
   matchScoreHistory = state.matchScoreHistory || [];
   matchDefaultRole = state.matchDefaultRole || {};
+  
   matchTimeline = state.matchTimeline || [];
   if (typeof matchTimeline === 'string') {
     try { matchTimeline = JSON.parse(matchTimeline); } catch(e) { matchTimeline = []; }
   }
+  
   hist = state.hist || [];
   redoStack = state.redoStack || [];
 
@@ -348,12 +365,9 @@ function resumeHistory(index) {
     Recorder.loadData(state.recorderData);
   }
 
-  historyList.splice(index, 1);
-  localStorage.setItem('call_match_history', JSON.stringify(historyList));
+  // データを保存し、画面を切り替える
   if (typeof saveActiveBackup === 'function') saveActiveBackup();
 
-  closeHistoryModal();
-  
   document.getElementById("game-flow-container").style.display = "none";
   document.getElementById("board-ui").style.display = "flex";
   
@@ -367,17 +381,4 @@ function resumeHistory(index) {
   }
   
   flowStep = 3;
-}
-
-function exportHistoryToPDF(index) {
-  let historyList = getHistoryList();
-  let matchItem = historyList[index];
-  if (!matchItem) return;
-  let state = matchItem.state || matchItem;
-  
-  if (typeof generatePDF === 'function') {
-    generatePDF(state);
-  } else {
-    alert("PDF生成機能が読み込まれていません。ページをリロードしてください。");
-  }
 }
