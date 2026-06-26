@@ -186,7 +186,6 @@ function syncBoardDOM() {
 // QRスキャナー・出力モーダル開閉と圧縮/解凍ロジック
 // =========================================
 
-// ★修正：カメラインスタンスを保持し続け、pause/resumeで使い回す
 let html5QrCode = null;
 let isCameraPaused = false;
 
@@ -199,22 +198,19 @@ function openQRScannerModal() {
   overlay.style.display = 'flex';
 
   if (typeof Html5Qrcode === 'undefined') {
-    alert("QRコード読み取り機能が読み込まれていません。");
+    alert("QRコード読み取り機能が読み込まれていません。通信環境を確認してください。");
     return;
   }
 
-  // カメラがすでに存在し、一時停止中の場合は resume() で即座に再開する
   if (html5QrCode && isCameraPaused) {
     html5QrCode.resume();
     isCameraPaused = false;
     return;
   }
 
-  // 初回起動時のみインスタンスを生成して start() する
   html5QrCode = new Html5Qrcode("qr-reader");
 
   const onScanSuccess = (decodedText, decodedResult) => {
-    // 成功したらカメラを「一時停止」する（ストップしない）
     if (html5QrCode) {
       html5QrCode.pause();
       isCameraPaused = true;
@@ -238,12 +234,11 @@ function openQRScannerModal() {
     } catch (e) {
       alert("QRコードの解読に失敗しました。データ形式が正しくありません。");
       console.error(e);
-      // 解読に失敗した場合はカメラを再開してもう一度読み取れるようにする
       if (html5QrCode && isCameraPaused) {
         html5QrCode.resume();
         isCameraPaused = false;
       }
-      return; // モーダルを閉じない
+      return; 
     }
     overlay.style.display = 'none';
   };
@@ -266,7 +261,6 @@ function closeQRScannerModal() {
   const overlay = document.getElementById('qr-scanner-overlay');
   if (overlay) {
     overlay.style.display = 'none';
-    // 閉じる時も stop() ではなく pause() で裏側に維持する
     if (html5QrCode && !isCameraPaused) {
       html5QrCode.pause();
       isCameraPaused = true;
@@ -288,7 +282,7 @@ function openQROutputModal(index) {
     
     let state = JSON.parse(JSON.stringify(matchItem.state || matchItem));
     
-    // ★修正：重い「戻る履歴」だけを削り、PDF出力に必要なデータ(recorderData等)は残してQR化する
+    // PDFに必要なデータは残しつつ、重いUndo履歴だけを削ってダイエット
     state.hist = [];
     state.redoStack = [];
     
@@ -304,21 +298,19 @@ function openQROutputModal(index) {
     
     overlay.innerHTML = ""; 
     
-    // ★修正：絶対に画面をはみ出さない「安全な枠（コンテナ）」を作成
+    // ★大修正：ピクセル指定を外し、CSSの枠サイズ（80vw / 80vh）のみで完全に制限する
     let qrContainer = document.createElement('div');
-    // 幅と高さの最大を 80vw / 80vh に制限し、必ず画面内に収める
     qrContainer.style.cssText = "width: 80vw; height: 80vw; max-width: 400px; max-height: 400px; background-color: #ffffff; border-radius: 12px; padding: 15px; box-sizing: border-box; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center;";
     
     let canvas = document.createElement('canvas');
-    // canvas自体は親要素(qrContainer)の中に100%で収まるようにする
+    // canvasは親のコンテナに100%で従う
     canvas.style.cssText = "width: 100% !important; height: 100% !important; object-fit: contain;";
     
     qrContainer.appendChild(canvas);
     overlay.appendChild(qrContainer);
     
-    // 描画自体は高解像度で行い、CSSで枠内に縮小表示させることでクッキリさせる
+    // ★ピクセルサイズの強制指定（width/scale）を削除し、コンテナの大きさに自動で合わせる
     QRCode.toCanvas(canvas, base64String, {
-      width: 800, 
       margin: 1,
       color: {
         dark: "#000000",
