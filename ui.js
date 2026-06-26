@@ -6,10 +6,8 @@
  * アプリ起動時の初期化処理
  */
 window.onload = function() {
-  // 画面の初期描画
   if (typeof renderFlow === 'function') renderFlow();
   
-  // ROSTERのEnterキー登録ショートカット
   const rosterPlayerInput = document.getElementById('roster-player-name');
   const rosterTeamInput = document.getElementById('roster-team-name');
   const rosterSubmitBtn = document.getElementById('roster-submit-btn');
@@ -25,7 +23,6 @@ window.onload = function() {
     });
   }
 
-  // 選手/チーム選択モーダルのCANCELボタンを大型化
   const playerSelectCancelContainer = document.querySelector('#player-select-overlay .back-nav-bar');
   if (playerSelectCancelContainer) {
     playerSelectCancelContainer.style.marginTop = '20px';
@@ -200,7 +197,7 @@ function openQRScannerModal() {
   overlay.style.display = 'flex';
 
   if (typeof Html5Qrcode === 'undefined') {
-    alert("QRコード読み取り機能が読み込まれていません。通信環境を確認してください。");
+    alert("QRコード読み取り機能が読み込まれていません。");
     return;
   }
 
@@ -240,14 +237,11 @@ function openQRScannerModal() {
     overlay.style.display = 'none';
   };
 
-  const cameraConfig = { 
-    facingMode: "environment",
-    width: { min: 1024, ideal: 1920 },
-    height: { min: 768, ideal: 1080 }
-  };
+  // ★修正：iPhoneで確実に起動するよう、解像度強制を外して最もシンプルな設定に戻す
+  const cameraConfig = { facingMode: "environment" };
   const config = { 
     fps: 15,
-    qrbox: { width: 300, height: 300 } 
+    qrbox: { width: 250, height: 250 } 
   };
 
   html5QrCode.start(cameraConfig, config, onScanSuccess)
@@ -283,7 +277,7 @@ function openQROutputModal(index) {
     
     let state = JSON.parse(JSON.stringify(matchItem.state || matchItem));
     
-    // 超・徹底的ダイエット（重い履歴データを全て削ぎ落として低密度QRにする）
+    // 超・徹底的ダイエット
     state.hist = [];
     state.redoStack = [];
     state.matchTimeline = [];
@@ -299,17 +293,23 @@ function openQROutputModal(index) {
     }
     let base64String = btoa(binaryString);
     
-    overlay.innerHTML = ""; // 古いQRを消す
+    overlay.innerHTML = ""; 
+    
+    // ★大修正：親要素(div)を作成し、絶対に画面の80%を超えないように強固なCSSでロックする
+    let qrContainer = document.createElement('div');
+    qrContainer.style.cssText = "width: 80vw; height: 80vw; max-width: 400px; max-height: 400px; background-color: #ffffff; border-radius: 12px; padding: 15px; box-sizing: border-box; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center;";
     
     let canvas = document.createElement('canvas');
-    // ★大修正：CSSによる美しい80%ポップアップスタイルを直接注入
-    canvas.style.cssText = "width: 80vmin; height: 80vmin; max-width: 600px; max-height: 600px; background-color: #ffffff; border-radius: 12px; padding: 15px; box-sizing: border-box; box-shadow: 0 10px 30px rgba(0,0,0,0.8);";
-    overlay.appendChild(canvas);
+    // canvas自体は親要素(qrContainer)の中に100%で収まるようにする
+    canvas.style.cssText = "width: 100% !important; height: 100% !important; object-fit: contain;";
     
-    // 描画自体は高解像度で行い、縮小表示させることでクッキリさせる
+    qrContainer.appendChild(canvas);
+    overlay.appendChild(qrContainer);
+    
+    // 描画自体は高解像度で行い、CSSで縮小表示させることでクッキリさせる
     QRCode.toCanvas(canvas, base64String, {
       width: 800, 
-      margin: 1, // 白枠はpaddingで作ったので、QR自身の余白は最小限にする
+      margin: 1,
       color: {
         dark: "#000000",
         light: "#ffffff"
@@ -322,7 +322,6 @@ function openQROutputModal(index) {
       }
     });
     
-    // 最後に表示する
     overlay.style.display = 'flex';
     
   } catch (e) {
@@ -338,6 +337,6 @@ function closeQROutputModal() {
   const overlay = document.getElementById('qr-direct-overlay');
   if (overlay) {
     overlay.style.display = 'none';
-    overlay.innerHTML = ''; // メモリ解放のためにCanvasも消去する
+    overlay.innerHTML = ''; 
   }
 }
