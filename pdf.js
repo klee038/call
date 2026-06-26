@@ -1,20 +1,21 @@
-﻿// =========================================
-// PDF出力・A4フォーマット生成ロジック (pdf.js)
-// =========================================
-
-/**
- * 試合データを受け取り、裏側で一時的にA4の表を作成してPDFをプレビューする共通関数
- */
-function generatePDF(state) {
+﻿function generatePDF(state) {
   let container = document.createElement('div');
   container.id = 'pdf-export-container';
   
   let isDouble = state.flowIsDouble;
-  let matchTypeStr = isDouble ? "ダブルス" : "シングルス";
+  let typeStr = isDouble ? "ダブルス" : "シングルス";
+  let games = state.flowMaxGames || 3;
+  let points = state.flowMaxPoints || 21;
+  let hasSetting = state.flowHasSetting !== undefined ? state.flowHasSetting : true;
+  
+  let matchTypeStr = `${typeStr} ${games}G ${points}pt`;
+  if (hasSetting) {
+      let deuceLimit = (points === 21) ? 30 : ((points === 15) ? 21 : 15);
+      matchTypeStr += ` (${deuceLimit})`;
+  }
+  
   let tLName = state.initialTL || state.tL || "";
   let tRName = state.initialTR || state.tR || "";
-  
-  // 常に「試合開始時の初期配置の選手名」を利用する
   let nL1 = state.initialNL1 || state.nL1 || "";
   let nL2 = isDouble ? (state.initialNL2 || state.nL2 || "") : "";
   let nR1 = state.initialNR1 || state.nR1 || "";
@@ -33,14 +34,11 @@ function generatePDF(state) {
   });
   let displayTotalL = (histStrs.length > 0) ? totalMatchScoreL : "";
   let displayTotalR = (histStrs.length > 0) ? totalMatchScoreR : "";
-
   let matchDate = state.date ? state.date.split(' ')[0] : "";
 
-  // 1ゲーム分の行(tr)のHTMLを生成するヘルパー関数
   const getGameRowsHTML = (gameIndex, gameLabelStr) => {
     let tableData = [];
     if (typeof Recorder !== 'undefined' && state.recorderData) {
-        // デュース目印(U_)が付与されたクリーンなデータを取得
         tableData = Recorder.generateTableData(state.recorderData, gameIndex, state.flowMaxPoints, state.flowHasSetting);
     } else {
         tableData = Array.from({length: 4}, () => new Array(68).fill("")); 
@@ -50,20 +48,15 @@ function generatePDF(state) {
     let rowsHtml = "";
     let players = [nL1, nL2, nR1, nR2];
 
-    // 各ゲームの最終スコアを取得（進行中の場合は空欄）
     let gameFinalL = histStrs[gameIndex] ? histStrs[gameIndex].a : "";
     let gameFinalR = histStrs[gameIndex] ? histStrs[gameIndex].b : "";
-
-    // ★修正箇所：最終スコアに対するデュース判定と下線の付与
     let limit = state.flowMaxPoints || 21;
     let deucePt = limit - 1;
-    let hasSetting = state.flowHasSetting !== undefined ? state.flowHasSetting : true;
-    
+    let localHasSetting = state.flowHasSetting !== undefined ? state.flowHasSetting : true;
     let displayFinalL = gameFinalL;
     let displayFinalR = gameFinalR;
     
-    if (hasSetting && gameFinalL !== "" && gameFinalR !== "") {
-        // 両者の最終スコアがデュースポイントに達していれば、文字に下線を引く
+    if (localHasSetting && gameFinalL !== "" && gameFinalR !== "") {
         if (gameFinalL >= deucePt && gameFinalR >= deucePt) {
             displayFinalL = `<span style="border-bottom: 1px solid #000000; padding-bottom: 2px; display: inline-block; line-height: 1;">${gameFinalL}</span>`;
             displayFinalR = `<span style="border-bottom: 1px solid #000000; padding-bottom: 2px; display: inline-block; line-height: 1;">${gameFinalR}</span>`;
@@ -73,24 +66,18 @@ function generatePDF(state) {
     for (let r = 0; r < 8; r++) {
       let isUpper = (r < 4); 
       let playerRowIndex = r % 4; 
-      
       let rowClass = "";
       if (r === 3) rowClass = ' class="upper-last-row"';
       if (r === 7) rowClass = ' class="game-last-row"';
-
       rowsHtml += `<tr${rowClass}>`;
 
       if (isUpper) {
-        if (r === 0) {
-          rowsHtml += `<td rowspan="4" class="game-label-col">${label}</td>`;
-        }
+        if (r === 0) rowsHtml += `<td rowspan="4" class="game-label-col">${label}</td>`;
         rowsHtml += `<td class="player-row-col">${players[playerRowIndex]}</td>`;
         let srVal = tableData[playerRowIndex] && tableData[playerRowIndex][0] ? tableData[playerRowIndex][0] : "";
         rowsHtml += `<td class="serve-col">${srVal}</td>`;
       } else {
-        if (r === 4) {
-          rowsHtml += `<td colspan="3" rowspan="4" class="lower-blank-area"></td>`;
-        }
+        if (r === 4) rowsHtml += `<td colspan="3" rowspan="4" class="lower-blank-area"></td>`;
       }
 
       let startCol = isUpper ? 1 : 34; 
@@ -99,42 +86,26 @@ function generatePDF(state) {
       for (let c = 0; c < rallyCellCount; c++) { 
         let colIndex = startCol + c;
         let cellVal = tableData[playerRowIndex] && tableData[playerRowIndex][colIndex] ? tableData[playerRowIndex][colIndex] : "";
-        
-        if (typeof cellVal === 'string' && cellVal.startsWith("W_")) {
-            cellVal = cellVal.replace("W_", "");
-        }
+        if (typeof cellVal === 'string' && cellVal.startsWith("W_")) cellVal = cellVal.replace("W_", "");
         
         let contentHtml = cellVal;
-        
-        // データが「U_」から始まっていれば、下線を引いて出力する
         if (typeof cellVal === 'string' && cellVal.startsWith("U_")) {
             let actualNumber = cellVal.replace("U_", "");
-            // アンダーラインを引く（枠のギリギリ下ではなく、文字のすぐ下に引く）
             contentHtml = `<span style="border-bottom: 1px solid #000000; padding-bottom: 1px; display: inline-block; line-height: 1;">${actualNumber}</span>`;
         }
-        
         let preFinalClass = (!isUpper && c === rallyCellCount - 1) ? " pre-final-score" : "";
-        
-        // 列を詰める処理などを一切廃止。ただシンプルにマスを出力するだけ。
         rowsHtml += `<td class="rally-cell${preFinalClass}">${contentHtml}</td>`;
       }
 
-      // 下段の最後の2列に最終スコア専用の大きな枠を配置
       if (!isUpper) {
-          if (r === 4) {
-              rowsHtml += `<td rowspan="2" colspan="2" class="final-score-box final-score-top">${displayFinalL}</td>`;
-          } else if (r === 6) {
-              rowsHtml += `<td rowspan="2" colspan="2" class="final-score-box final-score-bottom">${displayFinalR}</td>`;
-          }
+          if (r === 4) rowsHtml += `<td rowspan="2" colspan="2" class="final-score-box final-score-top">${displayFinalL}</td>`;
+          else if (r === 6) rowsHtml += `<td rowspan="2" colspan="2" class="final-score-box final-score-bottom">${displayFinalR}</td>`;
       }
-
       rowsHtml += `</tr>`;
     }
-
     return rowsHtml;
   };
 
-  // 1つのテーブル内に3ゲームすべてを出力する（不要な隙間が発生しません）
   let allGamesHTML = `
     <div class="game-section">
       <table class="game-table">
@@ -152,9 +123,7 @@ function generatePDF(state) {
 
   container.innerHTML = `
     <div id="score-sheet-a4" class="score-sheet-page">
-      
       <div class="sheet-title" style="color: #000; margin-top: 10px;">ス コ ア シ ー ト <span style="font-size:14px; letter-spacing: 2px;">(得点用紙)</span></div>
-      
       <div class="sheet-header" style="color: #000;">
         <div class="header-side">
           <div class="header-line">大会名：<span class="line-blank"></span></div>
@@ -162,7 +131,6 @@ function generatePDF(state) {
           <div class="header-line">開催場所：<span class="line-blank"></span></div>
           <div class="header-line">大会期日：<span class="line-blank">${matchDate}</span></div>
         </div>
-        
         <div class="header-center">
           <table class="match-score-table">
             <colgroup>
@@ -204,17 +172,14 @@ function generatePDF(state) {
             </tbody>
           </table>
         </div>
-        
         <div class="header-side">
-          <div class="header-line">種目：<span class="line-blank">${matchTypeStr}</span></div>
+          <div class="header-line">種目：<span class="line-blank" style="font-size: 11px;">${matchTypeStr}</span></div>
           <div class="header-line">試合番号：<span class="line-blank"></span></div>
           <div class="header-line">コート：<span class="line-blank"></span></div>
           <div class="header-line">コール時刻：<span class="line-blank"></span></div>
         </div>
       </div>
-
       ${allGamesHTML}
-
       <div class="sheet-footer" style="color: #000;">
         <div class="footer-row">
           <div class="footer-sign-box">勝者署名<span class="sign-line"></span></div>
@@ -228,12 +193,10 @@ function generatePDF(state) {
           <div class="footer-time-box">使用シャトル数：<span class="time-line"></span></div>
         </div>
       </div>
-      
     </div>
   `;
 
   document.body.appendChild(container);
-
   let element = document.getElementById('score-sheet-a4');
   let now = new Date();
   let dateStrPDF = now.getFullYear() + ('0'+(now.getMonth()+1)).slice(-2) + ('0'+now.getDate()).slice(-2) + "_" + ('0'+now.getHours()).slice(-2) + ('0'+now.getMinutes()).slice(-2);

@@ -130,7 +130,7 @@ const Recorder = {
         let r = action.winnerRow;
         if (r >= 0 && r < rowsCount) {
           
-          // ★修正箇所：最後の1点（WIN_SCORE）に対してもデュース判定を行う
+          // チーム代表者の行から左右のどちらのチームが勝ったかを判定
           let isLeft = (r === 0 || r === 1);
           if (isLeft) scoreL = action.score;
           else scoreR = action.score;
@@ -146,8 +146,20 @@ const Recorder = {
               val = "U_" + val;
           }
           
-          table[r][globalCol] = "W_" + val;
-          globalCol++;
+          // ★修正箇所：代表者の行(r)を無視して、自力で最後の点数のマスを探して上書きする
+          let lastCol = globalCol - 1;
+          if (lastCol >= 2) {
+              let targetStr = action.score.toString();
+              let targetUnderlineStr = "U_" + targetStr;
+              
+              // 上の行から順番にチェックして、実際の最後の点数が入っているマスを特定
+              for (let i = 0; i < rowsCount; i++) {
+                  if (table[i][lastCol] === targetStr || table[i][lastCol] === targetUnderlineStr) {
+                      table[i][lastCol] = "W_" + val;
+                      break; // 見つけたら上書きして終了
+                  }
+              }
+          }
         }
       }
     });
