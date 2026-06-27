@@ -188,9 +188,8 @@ function syncBoardDOM() {
 
 let html5QrCode = null;
 let isCameraPaused = false;
-let qrAnimationTimer = null; // 出力側のパラパラ用タイマー
+let qrAnimationTimer = null; 
 
-// 入力側の収集用変数
 let scannedChunks = [];
 let totalChunksExpected = 0;
 
@@ -205,10 +204,14 @@ function openQRScannerModal() {
   
   if (!overlay) return;
   
-  // 収集用変数をリセット
   scannedChunks = [];
   totalChunksExpected = 0;
-  if (dotsContainer) dotsContainer.innerHTML = '';
+  
+  // ★修正：丸が潰れず、端まで行ったら折り返すように flex-wrap を設定
+  if (dotsContainer) {
+    dotsContainer.innerHTML = '';
+    dotsContainer.style.flexWrap = 'wrap'; 
+  }
   
   if (reader) reader.style.display = 'block';
   if (spinner) spinner.style.display = 'none';
@@ -229,7 +232,6 @@ function openQRScannerModal() {
 
   const onScanSuccess = async (decodedText, decodedResult) => {
     if (totalChunksExpected > 0 && scannedChunks.filter(Boolean).length === totalChunksExpected) return;
-
     if (!decodedText.startsWith("QRX:")) return;
 
     try {
@@ -244,8 +246,9 @@ function openQRScannerModal() {
       if (totalChunksExpected === 0) {
         totalChunksExpected = total;
         if (dotsContainer) {
+          // ★修正：丸のサイズを小さめにし、flex-shrink: 0 で絶対に潰れないようにする
           dotsContainer.innerHTML = Array.from({length: total}, (_, i) => 
-            `<div id="qr-dot-${i}" style="width: 12px; height: 12px; border-radius: 50%; background-color: rgba(255,255,255,0.15);"></div>`
+            `<div id="qr-dot-${i}" style="width: 8px; height: 8px; border-radius: 50%; background-color: rgba(255,255,255,0.15); flex-shrink: 0;"></div>`
           ).join('');
         }
       }
@@ -272,7 +275,6 @@ function openQRScannerModal() {
         setTimeout(() => {
           try {
             let fullBase64 = scannedChunks.join('');
-            
             let binaryString = atob(fullBase64);
             let charArray = binaryString.split('').map(c => c.charCodeAt(0));
             let uint8Array = new Uint8Array(charArray);
@@ -294,6 +296,8 @@ function openQRScannerModal() {
           } catch (e) {
             alert("QRコードの結合・解読に失敗しました。");
             console.error(e);
+            if (spinner) spinner.style.display = 'none';
+            if (reader) reader.style.display = 'block';
           }
         }, 50);
       }
@@ -317,19 +321,24 @@ function openQRScannerModal() {
     });
 }
 
-function closeQRScannerModal() {
+async function closeQRScannerModal() {
   const overlay = document.getElementById('qr-scanner-overlay');
-  if (overlay) {
-    overlay.style.display = 'none';
-    if (html5QrCode && !isCameraPaused) {
-      html5QrCode.pause();
-      isCameraPaused = true;
+  if (!overlay) return;
+  overlay.style.display = 'none';
+  if (html5QrCode) {
+    try {
+      await html5QrCode.stop();
+      html5QrCode.clear();
+    } catch (err) {
+      console.log("カメラ停止エラー", err);
+    } finally {
+      html5QrCode = null;
     }
   }
 }
 
 /**
- * 【出力側】ダイレクトQR表示（アニメーションQR方式：超低密度版）
+ * 【出力側】ダイレクトQR表示（アニメーションQR方式：バージョン固定超低密度版）
  */
 function openQROutputModal(index) {
   const overlay = document.getElementById('qr-direct-overlay');
@@ -365,8 +374,8 @@ function openQROutputModal(index) {
     }
     let fullBase64String = btoa(binaryString);
     
-    // ★大改修：1枚あたりの文字数を 100文字 に減らし、ドットを極限まで粗く（低バージョンに）する
-    const chunkSize = 100; 
+    // ★大改修：バージョン5（粗いマス目）に確実に収めるため、チャンクを60文字に極小化
+    const chunkSize = 60; 
     let chunks = [];
     for (let i = 0; i < fullBase64String.length; i += chunkSize) {
       chunks.push(fullBase64String.substring(i, i + chunkSize));
@@ -393,8 +402,10 @@ function openQROutputModal(index) {
     const drawNextQR = () => {
       let payload = `QRX:${currentDrawIndex + 1}/${totalChunks}:${chunks[currentDrawIndex]}`;
       
+      // ★大改修：バージョンを『5』に固定し、常に粗いマス目で生成させる
       QRCode.toCanvas(canvas, payload, {
         margin: 1,
+        version: 5,
         color: { dark: "#000000", light: "#ffffff" },
         errorCorrectionLevel: 'L'
       }, function (error) {
@@ -405,10 +416,10 @@ function openQROutputModal(index) {
       currentDrawIndex = (currentDrawIndex + 1) % totalChunks;
     };
 
-    // ★大改修：QRの切り替え速度を 0.25秒（250ミリ秒）に高速化し、読み取り時間を短縮
+    // ★大改修：切り替え速度を0.15秒に高速化（マシンガンスキャン）
     drawNextQR();
     if (totalChunks > 1) {
-      qrAnimationTimer = setInterval(drawNextQR, 250); 
+      qrAnimationTimer = setInterval(drawNextQR, 150); 
     }
     
   } catch (e) {
@@ -417,9 +428,6 @@ function openQROutputModal(index) {
   }
 }
 
-/**
- * 【出力側】ダイレクトQR表示を閉じる
- */
 function closeQROutputModal() {
   const overlay = document.getElementById('qr-direct-overlay');
   if (overlay) {

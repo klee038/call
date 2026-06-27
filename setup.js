@@ -10,7 +10,7 @@ let defaultSettings = {
   hasCE: true,
   hasInterval: true,
   hasSetting: true,
-  hasCourtSelect: true, // ★コート選択の初期値を設定
+  hasCourtSelect: true, 
   wakeLockMinutes: 3
 };
 
@@ -23,12 +23,10 @@ let flowHasInterval = true;
 let flowHasSetting = true;
 let flowHasCourtSelect = true;
 
-// 起動時のプレイヤー名初期値を完全に空っぽ（""）にし、消す手間をなくす
 let txtTL = ""; let txtTR = "";
 let txtPL1 = ""; let txtPL2 = "";
 let txtPR1 = ""; let txtPR2 = "";
 
-// 起動時にローカルストレージからお気に入り初期値を読み込む
 function loadDefaultSettings() {
   let saved = localStorage.getItem('call_default_settings');
   if (saved) {
@@ -37,7 +35,6 @@ function loadDefaultSettings() {
       defaultSettings = { ...defaultSettings, ...parsed };
     } catch (e) {}
   }
-  // 起動時の初期値として一度だけセットする
   flowIsDouble = defaultSettings.isDouble;
   flowMaxGames = defaultSettings.maxGames;
   flowMaxPoints = defaultSettings.maxPoints;
@@ -48,7 +45,6 @@ function loadDefaultSettings() {
 }
 loadDefaultSettings();
 
-// スコア画面最下部に表示する設定カンペの文字列を生成・更新する
 function updateBoardFormatInfo() {
   const infoEl = document.getElementById("board-format-info");
   if (!infoEl) return;
@@ -71,7 +67,6 @@ function renderFlow() {
 
   updateBoardFormatInfo();
 
-  // 左上のアイコン配置
   let leftHeaderActions = `
     <div style="display: flex; gap: 15px; align-items: center;">
       <button class="setting-icon-btn" onclick="openQRScannerModal()">
@@ -464,85 +459,6 @@ function applySettings() {
   closeSettingModal();
 }
 
-function renderSettingModal() {
-  const content = document.getElementById("setting-modal-content");
-  if (!content) return;
-
-  content.innerHTML = `
-    <div style="overflow-y: auto; max-height: 50vh; display: flex; flex-direction: column; gap: 5px; width: 100%; padding-right: 4px; box-sizing: border-box;">
-      <div class="setting-row">
-        <div class="setting-label">種目</div>
-        <div class="toggle-group">
-          <button class="toggle-item ${!tempSettings.isDouble ? 'selected' : ''}" onclick="updateTempSetting('isDouble', false)">SINGLES</button>
-          <button class="toggle-item ${tempSettings.isDouble ? 'selected' : ''}" onclick="updateTempSetting('isDouble', true)">DOUBLES</button>
-        </div>
-      </div>
-      <div class="setting-row">
-        <div class="setting-label">ゲーム数</div>
-        <div class="toggle-group">
-          <button class="toggle-item ${tempSettings.maxGames === 1 ? 'selected' : ''}" onclick="updateTempSetting('maxGames', 1)">1G</button>
-          <button class="toggle-item ${tempSettings.maxGames === 3 ? 'selected' : ''}" onclick="updateTempSetting('maxGames', 3)">3G</button>
-          <button class="toggle-item ${tempSettings.maxGames === 5 ? 'selected' : ''}" onclick="updateTempSetting('maxGames', 5)">5G</button>
-        </div>
-      </div>
-      <div class="setting-row">
-        <div class="setting-label">点数</div>
-        <div class="toggle-group">
-          <button class="toggle-item ${tempSettings.maxPoints === 11 ? 'selected' : ''}" onclick="updateTempSetting('maxPoints', 11)">11pt</button>
-          <button class="toggle-item ${tempSettings.maxPoints === 15 ? 'selected' : ''}" onclick="updateTempSetting('maxPoints', 15)">15pt</button>
-          <button class="toggle-item ${tempSettings.maxPoints === 21 ? 'selected' : ''}" onclick="updateTempSetting('maxPoints', 21)">21pt</button>
-        </div>
-      </div>
-      <div class="setting-row">
-        <div class="setting-label">デュース</div>
-        <div class="toggle-group">
-          <button class="toggle-item ${!tempSettings.hasSetting ? 'selected' : ''}" onclick="updateTempSetting('hasSetting', false)">なし</button>
-          <button class="toggle-item ${tempSettings.hasSetting ? 'selected' : ''}" onclick="updateTempSetting('hasSetting', true)">あり</button>
-        </div>
-      </div>
-      <div class="setting-row">
-        <div class="setting-label">チェンジエンズ</div>
-        <div class="toggle-group">
-          <button class="toggle-item ${!tempSettings.hasCE ? 'selected' : ''}" onclick="updateTempSetting('hasCE', false)">なし</button>
-          <button class="toggle-item ${tempSettings.hasCE ? 'selected' : ''}" onclick="updateTempSetting('hasCE', true)">あり</button>
-        </div>
-      </div>
-      <div class="setting-row">
-        <div class="setting-label">インターバル</div>
-        <div class="toggle-group">
-          <button class="toggle-item ${!tempSettings.hasInterval ? 'selected' : ''}" onclick="updateTempSetting('hasInterval', false)">なし</button>
-          <button class="toggle-item ${tempSettings.hasInterval ? 'selected' : ''}" onclick="updateTempSetting('hasInterval', true)">あり</button>
-        </div>
-      </div>
-      <div class="setting-row">
-        <div class="setting-label">コート選択</div>
-        <div class="toggle-group">
-          <button class="toggle-item ${!tempSettings.hasCourtSelect ? 'selected' : ''}" onclick="updateTempSetting('hasCourtSelect', false)">なし</button>
-          <button class="toggle-item ${tempSettings.hasCourtSelect ? 'selected' : ''}" onclick="updateTempSetting('hasCourtSelect', true)">あり</button>
-        </div>
-      </div>
-      <div class="setting-row" style="flex-direction: column; align-items: flex-start; gap: 10px; border-bottom: 1px solid rgba(255,255,255,0.05);">
-        <div class="setting-label" style="margin-bottom: 5px;">画面スリープ防止（Wake Lock）</div>
-        <div class="toggle-group" style="width: 100%;">
-          <button class="toggle-item ${tempSettings.wakeLockMinutes === 0 ? 'selected' : ''}" onclick="updateTempSetting('wakeLockMinutes', 0)" style="flex:1; padding: 8px 0; font-size: 13px;">端末設定</button>
-          <button class="toggle-item ${tempSettings.wakeLockMinutes === 3 ? 'selected' : ''}" onclick="updateTempSetting('wakeLockMinutes', 3)" style="flex:1; padding: 8px 0; font-size: 13px;">3分</button>
-          <button class="toggle-item ${tempSettings.wakeLockMinutes === 5 ? 'selected' : ''}" onclick="updateTempSetting('wakeLockMinutes', 5)" style="flex:1; padding: 8px 0; font-size: 13px;">5分</button>
-          <button class="toggle-item ${tempSettings.wakeLockMinutes === 10 ? 'selected' : ''}" onclick="updateTempSetting('wakeLockMinutes', 10)" style="flex:1; padding: 8px 0; font-size: 13px;">10分</button>
-        </div>
-      </div>
-      <div class="setting-row" style="flex-direction: column; align-items: flex-start; gap: 10px; border-bottom: none; padding-top: 15px;">
-        <div class="setting-label" style="color: #EF4444; font-size: 14px;">データリセット (危険)</div>
-        <div style="display: flex; gap: 8px; width: 100%;">
-          <button class="roster-delete-btn" style="flex: 1; padding: 10px 0; font-size: 12px; color: #EF4444; border-color: #EF4444;" onclick="clearAllHistory()">履歴の全削除</button>
-          <button class="roster-delete-btn" style="flex: 1; padding: 10px 0; font-size: 12px; color: #EF4444; border-color: #EF4444;" onclick="clearAllRoster()">名簿の全削除</button>
-        </div>
-        <button class="roster-delete-btn" style="width: 100%; padding: 10px 0; font-size: 12px; background: rgba(239,68,68,0.1); color: #EF4444; border-color: #EF4444;" onclick="factoryResetApp()">アプリの初期化 (全データ削除)</button>
-      </div>
-    </div>
-    <button class="action-btn" style="width: 100%; background: #333333 !important; margin-top: 20px !important;" onclick="applySettings()">APPLY</button>
-  `;
-}
-
 function clearAllHistory() {
   if (confirm("試合履歴を全て削除します。\n（元には戻せません）よろしいですか？")) {
     localStorage.removeItem('call_match_history');
@@ -600,36 +516,71 @@ document.addEventListener('click', resetWakeLockTimer, {passive: true});
 
 
 // =========================================
-// 新設：QRスキャンデータの受け取りと自動ワープ処理（確実な振り分け版）
+// QRスキャンデータの受け取りと自動ワープ処理
 // =========================================
 
-/**
- * QRコードから復元されたJSONオブジェクトを受け取り、
- * 内容に応じて「中断試合(得点板)」か「本部初期データ(トス画面)」へジャンプさせる。
- */
 function processScannedData(data) {
   if (!data || typeof data !== 'object') {
     alert("無効なデータ形式です。");
     return;
   }
 
-  // ★大改修：確実な振り分け判定
-  // data の中に「recorderData」が存在し、かつ「timeline」に1つでも記録があれば
-  // それは「すでに試合が始まっている中断データ」とみなす
+  // ★大改修：終了した試合（isOver: true）なら得点板には飛ばさず、履歴に追加するだけにする
+  if (data.isOver) {
+    try {
+      let historyList = [];
+      let saved = localStorage.getItem('call_match_history');
+      if (saved) historyList = JSON.parse(saved);
+
+      let now = new Date();
+      let dateStr = now.getFullYear() + '/' + ('0' + (now.getMonth() + 1)).slice(-2) + '/' + ('0' + now.getDate()).slice(-2) + ' ' + ('0' + now.getHours()).slice(-2) + ':' + ('0' + now.getMinutes()).slice(-2);
+
+      let teamLName = data.tL ? data.tL : (data.flowIsDouble ? `${data.nL1} & ${data.nL2}` : data.nL1);
+      let teamRName = data.tR ? data.tR : (data.flowIsDouble ? `${data.nR1} & ${data.nR2}` : data.nR1);
+      let matchTitle = `${teamLName} vs ${teamRName}`;
+
+      let matchScoreStr = `${data.gL} - ${data.gR}`;
+      let gameDetails = (data.matchScoreHistory || []).map(g => `${g.a}-${g.b}`).join(', ');
+
+      let newItem = {
+        id: now.getTime().toString(),
+        date: dateStr,
+        title: matchTitle,
+        status: "FINISHED",
+        score: matchScoreStr,
+        details: gameDetails,
+        state: data // 過去の記録（PDF用データ含む）を全て丸ごと保存
+      };
+
+      historyList.unshift(newItem);
+      localStorage.setItem('call_match_history', JSON.stringify(historyList));
+      
+      alert("終了済みの試合データを受信し、履歴（MATCH HISTORY）に追加しました。");
+      
+      // 履歴モーダルを再描画して最新状態を見せる
+      if (typeof renderHistoryList === 'function') {
+        renderHistoryList();
+      }
+      return; // 処理はここで終了（ワープしない）
+
+    } catch (e) {
+      alert("履歴への保存に失敗しました。");
+      console.error(e);
+      return;
+    }
+  }
+
+  // 終了していない場合は、通常通り「中断試合」か「本部データ」かで振り分け
   let isInterruptedMatch = false;
   if (data.recorderData && Array.isArray(data.recorderData.timeline) && data.recorderData.timeline.length > 0) {
     isInterruptedMatch = true;
   }
 
   if (isInterruptedMatch) {
-    // 【パターンA】中断試合なら、history.jsのワープエンジンで「得点板」へ直行
     if (typeof resumeMatchFromState === 'function') {
       resumeMatchFromState(data);
     }
   } else {
-    // 【パターンB】点数や履歴が入っていない「本部からの初期設定データ」の場合
-    
-    // 変数へ安全に代入
     flowIsDouble = (data.flowIsDouble !== undefined) ? data.flowIsDouble : (data.d !== undefined ? data.d : true);
     flowMaxGames = (data.flowMaxGames !== undefined) ? data.flowMaxGames : (data.g !== undefined ? data.g : 3);
     flowMaxPoints = (data.flowMaxPoints !== undefined) ? data.flowMaxPoints : (data.p !== undefined ? data.p : 15);
@@ -645,7 +596,6 @@ function processScannedData(data) {
     txtPR1 = data.nR1 || names[2] || "";
     txtPR2 = flowIsDouble ? (data.nR2 || names[3] || "") : "";
 
-    // トス画面（Step 3）へワープ。コート選択なしの場合は自動で試合開始
     if (flowHasCourtSelect) {
       flowStep = 3;
     } else {
