@@ -297,8 +297,10 @@ function resumeHistory(index) {
   let matchItem = historyList[index];
   let state = matchItem.state || matchItem;
 
+  // 抽出した状態をアプリに適用してワープさせる
   resumeMatchFromState(state);
 
+  // 履歴から削除して上書き
   historyList.splice(index, 1);
   localStorage.setItem('call_match_history', JSON.stringify(historyList));
   if (typeof saveActiveBackup === 'function') saveActiveBackup();
@@ -369,6 +371,18 @@ function resumeMatchFromState(state) {
     } catch(e) {
       console.warn("Recorderデータの復元に失敗しました", e);
     }
+  }
+
+  // ★大修正：ワープ直後のPDF白紙問題と戻るボタン空回りを解消する
+  // もしQRから復元された履歴（hist）があれば、最新の1個を一旦捨てる
+  if (hist.length > 0) {
+    hist.pop();
+  }
+  
+  // その上で「今の状態」を強制的に履歴に保存し直すことで、
+  // システムとPDFエンジン（Recorder）を完全に同期・確定させる
+  if (typeof boardSave === 'function') {
+    boardSave();
   }
 
   if (typeof saveActiveBackup === 'function') saveActiveBackup();
