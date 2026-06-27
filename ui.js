@@ -183,28 +183,39 @@ function syncBoardDOM() {
 }
 
 // =========================================
-// QRスキャナー・出力モーダル開閉と圧縮/解凍ロジック
+// アニメーションQR（分割送受信）と圧縮/解凍ロジック
 // =========================================
 
 let html5QrCode = null;
 let isCameraPaused = false;
+let qrAnimationTimer = null; // 出力側のパラパラ用タイマー
+
+// 入力側の収集用変数
+let scannedChunks = [];
+let totalChunksExpected = 0;
 
 /**
- * 【入力側】QRスキャナーモーダルを開き、カメラを起動（または再開）する
+ * 【入力側】QRスキャナーモーダルを開き、カメラを起動する
  */
 function openQRScannerModal() {
   const overlay = document.getElementById('qr-scanner-overlay');
   const reader = document.getElementById('qr-reader');
   const spinner = document.getElementById('qr-loading-spinner');
+  const dotsContainer = document.getElementById('qr-progress-dots');
   
   if (!overlay) return;
+  
+  // 収集用変数をリセット
+  scannedChunks = [];
+  totalChunksExpected = 0;
+  if (dotsContainer) dotsContainer.innerHTML = '';
   
   if (reader) reader.style.display = 'block';
   if (spinner) spinner.style.display = 'none';
   overlay.style.display = 'flex';
 
   if (typeof Html5Qrcode === 'undefined') {
-    alert("QRコード読み取り機能が読み込まれていません。通信環境を確認してください。");
+    alert("QRコード読み取り機能が読み込まれていません。");
     return;
   }
 
@@ -217,46 +228,90 @@ function openQRScannerModal() {
   html5QrCode = new Html5Qrcode("qr-reader");
 
   const onScanSuccess = async (decodedText, decodedResult) => {
-    
-    if (reader) reader.style.display = 'none';
-    if (spinner) spinner.style.display = 'flex';
+    // もしすでに揃っていれば無視
+    if (totalChunksExpected > 0 && scannedChunks.filter(Boolean).length === totalChunksExpected) return;
 
-    if (html5QrCode) {
-      try {
-        await html5QrCode.stop();
-        html5QrCode.clear();
-      } catch (err) {
-        console.log("カメラ停止エラー", err);
-      } finally {
-        html5QrCode = null;
-      }
+    // 今回は分割QR対応のため、プレフィックス "QRX:" を探す
+    if (!decodedText.startsWith("QRX:")) {
+      // 古い単一QRや関係ないQRの場合は無視
+      return;
     }
 
-    setTimeout(() => {
-      try {
-        let binaryString = atob(decodedText);
-        let charArray = binaryString.split('').map(c => c.charCodeAt(0));
-        let uint8Array = new Uint8Array(charArray);
+    try {
+      // 形式: "QRX:1/5:実際のBase64データ"
+      const parts = decodedText.split(':');
+      if (parts.length < 3) return;
+      
+      const meta = parts[1].split('/'); // "1/5" -> ["1", "5"]
+      const currentIndex = parseInt(meta[0], 10) - 1; // 配列用に0スタート
+      const total = parseInt(meta[1], 10);
+      const dataStr = parts.slice(2).join(':');
 
-        let decompressedUint8 = pako.inflate(uint8Array);
-        let decompressedText = new TextDecoder().decode(decompressedUint8);
-        let matchData = JSON.parse(decompressedText);
+      // 初めて総数が分かったら、ドット（グレー）を描画する
+      if (totalChunksExpected === 0) {
+        totalChunksExpected = total;
+        if (dotsContainer) {
+          dotsContainer.innerHTML = Array.from({length: total}, (_, i) => 
+            `<div id="qr-dot-${i}" style="width: 12px; height: 12px; border-radius: 50%; background-color: rgba(255,255,255,0.15);"></div>`
+          ).join('');
+        }
+      }
+
+      // まだ持っていないピースならストックし、ドットを緑色に点灯させる
+      if (!scannedChunks[currentIndex]) {
+        scannedChunks[currentIndex] = dataStr;
+        const targetDot = document.getElementById(`qr-dot-${currentIndex}`);
+        if (targetDot) targetDot.style.backgroundColor = '#10B981'; // 綺麗な緑色
+      }
+
+      // 全てのピースが揃ったか判定
+      const collectedCount = scannedChunks.filter(Boolean).length;
+      if (collectedCount === totalChunksExpected) {
         
-        if (typeof processScannedData === 'function') {
-          processScannedData(matchData);
-        } else {
-          alert("復元・ワープ用の関数が見つかりません。");
+        // 全部揃ったらカメラを停止し、クルクルを表示
+        if (html5QrCode) {
+          try {
+            await html5QrCode.stop();
+            html5QrCode.clear();
+          } catch(e) {} finally { html5QrCode = null; }
         }
         
-      } catch (e) {
-        alert("QRコードの解読に失敗しました。データ形式が正しくありません。");
-        console.error(e);
+        if (reader) reader.style.display = 'none';
+        if (spinner) spinner.style.display = 'flex';
+
+        // 結合して解凍・ワープ処理（非同期で描画の隙間を作る）
+        setTimeout(() => {
+          try {
+            let fullBase64 = scannedChunks.join('');
+            
+            let binaryString = atob(fullBase64);
+            let charArray = binaryString.split('').map(c => c.charCodeAt(0));
+            let uint8Array = new Uint8Array(charArray);
+
+            let decompressedUint8 = pako.inflate(uint8Array);
+            let decompressedText = new TextDecoder().decode(decompressedUint8);
+            let matchData = JSON.parse(decompressedText);
+            
+            if (typeof processScannedData === 'function') {
+              processScannedData(matchData);
+            } else {
+              alert("復元用の関数が見つかりません。");
+            }
+            
+            overlay.style.display = 'none';
+            if (reader) reader.style.display = 'block';
+            if (spinner) spinner.style.display = 'none';
+
+          } catch (e) {
+            alert("QRコードの結合・解読に失敗しました。");
+            console.error(e);
+          }
+        }, 50);
       }
-      
-      overlay.style.display = 'none';
-      if (reader) reader.style.display = 'block';
-      if (spinner) spinner.style.display = 'none';
-    }, 50);
+
+    } catch (e) {
+      console.warn("分割QRの処理中にエラー", e);
+    }
   };
 
   const cameraConfig = { facingMode: "environment" };
@@ -269,36 +324,33 @@ function openQRScannerModal() {
     .catch(err => {
       alert("カメラの起動に失敗しました。ブラウザの許可を確認してください。");
       console.error(err);
+      html5QrCode = null;
     });
 }
 
-/**
- * 【入力側】QRスキャナーモーダルを閉じる（キャンセル時）
- */
-async function closeQRScannerModal() {
+function closeQRScannerModal() {
   const overlay = document.getElementById('qr-scanner-overlay');
-  if (!overlay) return;
-  
-  overlay.style.display = 'none';
-  
-  if (html5QrCode) {
-    try {
-      await html5QrCode.stop();
-      html5QrCode.clear();
-    } catch (err) {
-      console.log("カメラ停止エラー", err);
-    } finally {
-      html5QrCode = null;
+  if (overlay) {
+    overlay.style.display = 'none';
+    if (html5QrCode && !isCameraPaused) {
+      html5QrCode.pause();
+      isCameraPaused = true;
     }
   }
 }
 
 /**
- * 【出力側】ダイレクトQR表示（履歴一覧から一発表示）
+ * 【出力側】ダイレクトQR表示（アニメーションQR方式）
  */
 function openQROutputModal(index) {
   const overlay = document.getElementById('qr-direct-overlay');
   if (!overlay) return;
+  
+  // タイマーが残っていればリセット
+  if (qrAnimationTimer) {
+    clearInterval(qrAnimationTimer);
+    qrAnimationTimer = null;
+  }
   
   try {
     let historyList = getHistoryList();
@@ -307,7 +359,15 @@ function openQROutputModal(index) {
     
     let state = JSON.parse(JSON.stringify(matchItem.state || matchItem));
     
-    // ★大改修：ダイエット処理をすべて削除し、完全なデータ（全履歴・全PDFデータ）をそのまま圧縮する
+    // 中断試合として、最低限の「今の点数」だけは戻れるように、最新の履歴のみ残す
+    // PDFデータはそのまま維持する
+    if (state.hist && state.hist.length > 0) {
+      let latestHist = state.hist[state.hist.length - 1];
+      state.hist = [latestHist];
+    } else {
+      state.hist = [];
+    }
+    state.redoStack = [];
     
     let jsonString = JSON.stringify(state);
     let uint8Array = new TextEncoder().encode(jsonString);
@@ -317,34 +377,58 @@ function openQROutputModal(index) {
     for (let i = 0; i < compressedArray.length; i++) {
         binaryString += String.fromCharCode(compressedArray[i]);
     }
-    let base64String = btoa(binaryString);
+    let fullBase64String = btoa(binaryString);
+    
+    // ★大改修：Base64文字列を約300文字ずつの破片（チャンク）に分割する
+    const chunkSize = 300; 
+    let chunks = [];
+    for (let i = 0; i < fullBase64String.length; i += chunkSize) {
+      chunks.push(fullBase64String.substring(i, i + chunkSize));
+    }
+    
+    const totalChunks = chunks.length;
     
     overlay.innerHTML = ""; 
-    
     let qrContainer = document.createElement('div');
-    qrContainer.style.cssText = "width: 80vw; height: 80vw; max-width: 400px; max-height: 400px; background-color: #ffffff; border-radius: 12px; padding: 15px; box-sizing: border-box; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; overflow: hidden;";
+    qrContainer.style.cssText = "width: 80vw; height: 80vw; max-width: 400px; max-height: 400px; background-color: #ffffff; border-radius: 12px; padding: 15px; box-sizing: border-box; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; overflow: hidden; position: relative;";
     
     let canvas = document.createElement('canvas');
     canvas.style.cssText = "width: 100% !important; height: 100% !important; max-width: 100% !important; max-height: 100% !important; object-fit: contain; display: block;";
     
+    // アニメーション中の何枚目かを表示する小さなカウンター
+    let counterLabel = document.createElement('div');
+    counterLabel.style.cssText = "position: absolute; bottom: 5px; right: 10px; font-size: 10px; color: #999; font-family: monospace;";
+    
     qrContainer.appendChild(canvas);
+    qrContainer.appendChild(counterLabel);
     overlay.appendChild(qrContainer);
-    
-    QRCode.toCanvas(canvas, base64String, {
-      margin: 1,
-      color: {
-        dark: "#000000",
-        light: "#ffffff"
-      },
-      errorCorrectionLevel: 'L'
-    }, function (error) {
-      if (error) {
-        console.error(error);
-        alert("データ量が大きすぎてQRコードの生成限界を超えました。");
-      }
-    });
-    
     overlay.style.display = 'flex';
+
+    // パラパラ描画する関数
+    let currentDrawIndex = 0;
+    const drawNextQR = () => {
+      // 形式: "QRX:何枚目/総数:実際のデータ"
+      let payload = `QRX:${currentDrawIndex + 1}/${totalChunks}:${chunks[currentDrawIndex]}`;
+      
+      QRCode.toCanvas(canvas, payload, {
+        margin: 1,
+        color: { dark: "#000000", light: "#ffffff" },
+        errorCorrectionLevel: 'L'
+      }, function (error) {
+        if (error) console.error("QR描画エラー:", error);
+      });
+      
+      counterLabel.innerText = `${currentDrawIndex + 1} / ${totalChunks}`;
+      
+      // 次のインデックスへ（ループ）
+      currentDrawIndex = (currentDrawIndex + 1) % totalChunks;
+    };
+
+    // 最初の1枚目を即描画し、その後は0.4秒間隔で切り替え続ける
+    drawNextQR();
+    if (totalChunks > 1) {
+      qrAnimationTimer = setInterval(drawNextQR, 400); // 400ミリ秒 = 0.4秒
+    }
     
   } catch (e) {
     alert("データの圧縮またはQRコードの生成に失敗しました。");
@@ -353,12 +437,17 @@ function openQROutputModal(index) {
 }
 
 /**
- * 【出力側】ダイレクトQR表示を閉じる（タップされた時）
+ * 【出力側】ダイレクトQR表示を閉じる
  */
 function closeQROutputModal() {
   const overlay = document.getElementById('qr-direct-overlay');
   if (overlay) {
     overlay.style.display = 'none';
     overlay.innerHTML = ''; 
+    // タイマーを止めてパラパラを終了
+    if (qrAnimationTimer) {
+      clearInterval(qrAnimationTimer);
+      qrAnimationTimer = null;
+    }
   }
 }
