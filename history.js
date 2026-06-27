@@ -297,10 +297,8 @@ function resumeHistory(index) {
   let matchItem = historyList[index];
   let state = matchItem.state || matchItem;
 
-  // 抽出した状態をアプリに適用してワープさせる
   resumeMatchFromState(state);
 
-  // 履歴から削除して上書き
   historyList.splice(index, 1);
   localStorage.setItem('call_match_history', JSON.stringify(historyList));
   if (typeof saveActiveBackup === 'function') saveActiveBackup();
@@ -371,12 +369,6 @@ function resumeMatchFromState(state) {
     } catch(e) {
       console.warn("Recorderデータの復元に失敗しました", e);
     }
-  }
-
-  // ★修正：ワープ直後に「現在の状態」を強制的に履歴(hist)に保存し、UIと同期させる
-  // これにより、ワープ直後からUndoボタンが光り、PDF出力データも確定する
-  if (typeof boardSave === 'function') {
-      boardSave();
   }
 
   if (typeof saveActiveBackup === 'function') saveActiveBackup();

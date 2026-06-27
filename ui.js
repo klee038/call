@@ -187,9 +187,10 @@ function syncBoardDOM() {
 // =========================================
 
 let html5QrCode = null;
+let isCameraPaused = false;
 
 /**
- * 【入力側】QRスキャナーモーダルを開き、カメラを起動する
+ * 【入力側】QRスキャナーモーダルを開き、カメラを起動（または再開）する
  */
 function openQRScannerModal() {
   const overlay = document.getElementById('qr-scanner-overlay');
@@ -207,23 +208,19 @@ function openQRScannerModal() {
     return;
   }
 
-  // 起動前に古いインスタンスが残っていれば破棄
-  if (html5QrCode) {
-    try { 
-      html5QrCode.stop().then(() => { html5QrCode = null; }).catch(e => { html5QrCode = null; });
-    } catch(e) { html5QrCode = null; }
+  if (html5QrCode && isCameraPaused) {
+    html5QrCode.resume();
+    isCameraPaused = false;
+    return;
   }
 
   html5QrCode = new Html5Qrcode("qr-reader");
 
-  // ★大改修：async関数にして、カメラ停止を確実に待ってから処理を進める
   const onScanSuccess = async (decodedText, decodedResult) => {
     
-    // 成功したらまずクルクルを表示
     if (reader) reader.style.display = 'none';
     if (spinner) spinner.style.display = 'flex';
 
-    // 1. カメラを完全に停止(stop)し、リソースを手放すのを「待つ(await)」
     if (html5QrCode) {
       try {
         await html5QrCode.stop();
@@ -235,7 +232,6 @@ function openQRScannerModal() {
       }
     }
 
-    // 2. 50ミリ秒待ってから（クルクルの描画をブラウザに許してから）解読・ワープ処理
     setTimeout(() => {
       try {
         let binaryString = atob(decodedText);
@@ -246,7 +242,6 @@ function openQRScannerModal() {
         let decompressedText = new TextDecoder().decode(decompressedUint8);
         let matchData = JSON.parse(decompressedText);
         
-        // setup.js に新設した安全な振り分け関数へ渡す
         if (typeof processScannedData === 'function') {
           processScannedData(matchData);
         } else {
@@ -258,7 +253,6 @@ function openQRScannerModal() {
         console.error(e);
       }
       
-      // 最後にモーダルを閉じる
       overlay.style.display = 'none';
       if (reader) reader.style.display = 'block';
       if (spinner) spinner.style.display = 'none';
@@ -285,10 +279,8 @@ async function closeQRScannerModal() {
   const overlay = document.getElementById('qr-scanner-overlay');
   if (!overlay) return;
   
-  // モーダルを閉じる
   overlay.style.display = 'none';
   
-  // ★大改修：キャンセル時も確実にカメラをstop()して解放する
   if (html5QrCode) {
     try {
       await html5QrCode.stop();
@@ -315,9 +307,7 @@ function openQROutputModal(index) {
     
     let state = JSON.parse(JSON.stringify(matchItem.state || matchItem));
     
-    // PDFに必要なデータは残しつつ、重いUndo履歴だけを削ってダイエット
-    state.hist = [];
-    state.redoStack = [];
+    // ★大改修：ダイエット処理をすべて削除し、完全なデータ（全履歴・全PDFデータ）をそのまま圧縮する
     
     let jsonString = JSON.stringify(state);
     let uint8Array = new TextEncoder().encode(jsonString);
