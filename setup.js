@@ -48,6 +48,48 @@ function loadDefaultSettings() {
 }
 loadDefaultSettings();
 
+// =========================================
+// ★新設：起動時にQRスキャンデータ（バケツ）があるか確認し、自動振り分けワープを行う
+// =========================================
+function checkScannedQRDataOnLoad() {
+  let scannedDataString = sessionStorage.getItem('call_qr_scanned_data');
+  if (scannedDataString) {
+    try {
+      // バケツからBase64文字列を取り出し、デコードして解凍
+      let binaryString = atob(scannedDataString);
+      let charArray = binaryString.split('').map(c => c.charCodeAt(0));
+      let uint8Array = new Uint8Array(charArray);
+      let decompressedUint8 = pako.inflate(uint8Array);
+      let decompressedText = new TextDecoder().decode(decompressedUint8);
+      let matchData = JSON.parse(decompressedText);
+
+      // バケツを空にする（次回の起動でループさせないため）
+      sessionStorage.removeItem('call_qr_scanned_data');
+
+      // ★賢い振り分けロジック
+      // すでに点数が入っているか、ゲームが進んでいる場合は「中断試合」とみなす
+      let isMatchInProgress = (matchData.sL > 0 || matchData.sR > 0 || matchData.gL > 0 || matchData.gR > 0);
+
+      if (isMatchInProgress) {
+        // 中断試合なら、履歴画面からの復帰と同じワープエンジン（history.js）で「得点板」へ強制ジャンプ
+        if (typeof resumeMatchFromState === 'function') {
+          setTimeout(() => { resumeMatchFromState(matchData); }, 100);
+        }
+      } else {
+        // 点数が0-0の初期状態なら「本部からの初期データ」とみなし、設定して「トス画面（Step 3）」へ
+        setTimeout(() => { applyScannedMatchData(matchData); }, 100);
+      }
+
+    } catch (e) {
+      console.error("QRデータの復元に失敗しました", e);
+      sessionStorage.removeItem('call_qr_scanned_data');
+    }
+  }
+}
+// 起動時に実行
+checkScannedQRDataOnLoad();
+
+
 // スコア画面最下部に表示する設定カンペの文字列を生成・更新する
 function updateBoardFormatInfo() {
   const infoEl = document.getElementById("board-format-info");
@@ -600,7 +642,49 @@ document.addEventListener('click', resetWakeLockTimer, {passive: true});
 
 
 // =========================================
-// 新設：QRスキャンデータの受け取りと自動ワープ処理
+// ★新設：起動時にQRスキャンデータ（バケツ）があるか確認し、自動振り分けワープを行う
+// =========================================
+function checkScannedQRDataOnLoad() {
+  let scannedDataString = sessionStorage.getItem('call_qr_scanned_data');
+  if (scannedDataString) {
+    try {
+      // バケツからBase64文字列を取り出し、デコードして解凍
+      let binaryString = atob(scannedDataString);
+      let charArray = binaryString.split('').map(c => c.charCodeAt(0));
+      let uint8Array = new Uint8Array(charArray);
+      let decompressedUint8 = pako.inflate(uint8Array);
+      let decompressedText = new TextDecoder().decode(decompressedUint8);
+      let matchData = JSON.parse(decompressedText);
+
+      // バケツを空にする（次回の起動でループさせないため）
+      sessionStorage.removeItem('call_qr_scanned_data');
+
+      // ★賢い振り分けロジック
+      // すでに点数が入っているか、ゲームが進んでいる場合は「中断試合」とみなす
+      let isMatchInProgress = (matchData.sL > 0 || matchData.sR > 0 || matchData.gL > 0 || matchData.gR > 0);
+
+      if (isMatchInProgress) {
+        // 中断試合なら、履歴画面からの復帰と同じワープエンジン（history.js）で「得点板」へ強制ジャンプ
+        if (typeof resumeMatchFromState === 'function') {
+          setTimeout(() => { resumeMatchFromState(matchData); }, 100);
+        }
+      } else {
+        // 点数が0-0の初期状態なら「本部からの初期データ」とみなし、設定して「トス画面（Step 3）」へ
+        setTimeout(() => { applyScannedMatchData(matchData); }, 100);
+      }
+
+    } catch (e) {
+      console.error("QRデータの復元に失敗しました", e);
+      sessionStorage.removeItem('call_qr_scanned_data');
+    }
+  }
+}
+// 起動時に実行
+checkScannedQRDataOnLoad();
+
+
+// =========================================
+// 新設：QRスキャンデータの受け取りと自動ワープ処理（本部データ用）
 // =========================================
 
 /**
@@ -608,40 +692,31 @@ document.addEventListener('click', resetWakeLockTimer, {passive: true});
  * 変数へ代入した上で、適切な画面へジャンプさせる。
  */
 function applyScannedMatchData(data) {
-  // 不正なデータの場合はブロック
   if (!data || typeof data !== 'object') {
     alert("無効なデータ形式です。");
     return;
   }
 
-  // 1. 本部から受け取ったデータをグローバル変数へ代入
-  // booleanや数値は、型が保証されるようにフォールバック（初期値）付きで安全に代入します
-  flowIsDouble = (data.d !== undefined) ? data.d : true;
-  flowMaxGames = (data.g !== undefined) ? data.g : 3;
-  flowMaxPoints = (data.p !== undefined) ? data.p : 15;
-  flowHasSetting = (data.s !== undefined) ? data.s : true;
-  flowHasCourtSelect = (data.hc !== undefined) ? data.hc : true;
+  flowIsDouble = (data.flowIsDouble !== undefined) ? data.flowIsDouble : (data.d !== undefined ? data.d : true);
+  flowMaxGames = (data.flowMaxGames !== undefined) ? data.flowMaxGames : (data.g !== undefined ? data.g : 3);
+  flowMaxPoints = (data.flowMaxPoints !== undefined) ? data.flowMaxPoints : (data.p !== undefined ? data.p : 15);
+  flowHasSetting = (data.flowHasSetting !== undefined) ? data.flowHasSetting : (data.s !== undefined ? data.s : true);
+  flowHasCourtSelect = (data.flowHasCourtSelect !== undefined) ? data.flowHasCourtSelect : (data.hc !== undefined ? data.hc : true);
   
-  // チーム名と選手名の代入
   txtTL = data.tL || "";
   txtTR = data.tR || "";
   
-  // 配列 data.n [L1, L2, R1, R2] から選手名を取り出す
   let names = Array.isArray(data.n) ? data.n : [];
-  txtPL1 = names[0] || "";
-  txtPL2 = flowIsDouble ? (names[1] || "") : "";
-  txtPR1 = names[2] || "";
-  txtPR2 = flowIsDouble ? (names[3] || "") : "";
+  txtPL1 = data.nL1 || names[0] || "";
+  txtPL2 = flowIsDouble ? (data.nL2 || names[1] || "") : "";
+  txtPR1 = data.nR1 || names[2] || "";
+  txtPR2 = flowIsDouble ? (data.nR2 || names[3] || "") : "";
 
-  // 2. 画面の自動ワープ処理
   if (flowHasCourtSelect) {
-    // 【通常ルート】コート選択ありなら、手入力をスキップして即トス画面（Step 3）へ
     flowStep = 3;
   } else {
-    // 【エレベーター方式ルート】コート選択なしなら、確認のため設定画面（Step 1）に留まる
     flowStep = 1;
   }
 
-  // 3. UIの再描画
   renderFlow();
 }

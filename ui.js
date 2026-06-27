@@ -187,10 +187,9 @@ function syncBoardDOM() {
 // =========================================
 
 let html5QrCode = null;
-let isCameraPaused = false;
 
 /**
- * 【入力側】QRスキャナーモーダルを開き、カメラを起動（または再開）する
+ * 【入力側】QRスキャナーモーダルを開き、カメラを起動する
  */
 function openQRScannerModal() {
   const overlay = document.getElementById('qr-scanner-overlay');
@@ -199,7 +198,6 @@ function openQRScannerModal() {
   
   if (!overlay) return;
   
-  // モーダルを開くたびに初期状態（カメラ表示、クルクル非表示）にリセット
   if (reader) reader.style.display = 'block';
   if (spinner) spinner.style.display = 'none';
   overlay.style.display = 'flex';
@@ -209,56 +207,32 @@ function openQRScannerModal() {
     return;
   }
 
-  if (html5QrCode && isCameraPaused) {
-    html5QrCode.resume();
-    isCameraPaused = false;
-    return;
+  // カメラが残っていればストップ
+  if (html5QrCode) {
+    try { 
+      html5QrCode.stop().then(() => { html5QrCode = null; }).catch(e => { html5QrCode = null; });
+    } catch(e) { html5QrCode = null; }
   }
 
   html5QrCode = new Html5Qrcode("qr-reader");
 
   const onScanSuccess = (decodedText, decodedResult) => {
-    // 成功したらカメラを一時停止
+    // 成功したらカメラを完全に停止
     if (html5QrCode) {
-      html5QrCode.pause();
-      isCameraPaused = true;
+      html5QrCode.stop().then(() => {
+        html5QrCode = null;
+      }).catch(err => console.log("カメラ停止エラー", err));
     }
 
-    // ★非同期処理：先にカメラを隠してクルクルを表示し、ブラウザに描画させる隙間を与える
     if (reader) reader.style.display = 'none';
     if (spinner) spinner.style.display = 'flex';
 
-    // 50ミリ秒後に重い解凍・ワープ処理をスタートさせる
+    // ★大改修：重い処理やワープをここで行わず、データをバケツに入れて即座にリロードする
     setTimeout(() => {
-      try {
-        let binaryString = atob(decodedText);
-        let charArray = binaryString.split('').map(c => c.charCodeAt(0));
-        let uint8Array = new Uint8Array(charArray);
-
-        let decompressedUint8 = pako.inflate(uint8Array);
-        let decompressedText = new TextDecoder().decode(decompressedUint8);
-        let matchData = JSON.parse(decompressedText);
-        
-        if (typeof resumeMatchFromState === 'function') {
-          resumeMatchFromState(matchData);
-        } else {
-          alert("復元・ワープ用の関数が見つかりません。");
-        }
-        
-        // ワープ成功したらモーダルを閉じる
-        overlay.style.display = 'none';
-        
-      } catch (e) {
-        alert("QRコードの解読に失敗しました。データ形式が正しくありません。");
-        console.error(e);
-        // 失敗した場合はエラーを出して、再びカメラ画面に戻す
-        if (spinner) spinner.style.display = 'none';
-        if (reader) reader.style.display = 'block';
-        if (html5QrCode && isCameraPaused) {
-          html5QrCode.resume();
-          isCameraPaused = false;
-        }
-      }
+      // 読み取ったBase64の暗号データをそのままsessionStorageに退避
+      sessionStorage.setItem('call_qr_scanned_data', decodedText);
+      // 強制的にページを再読み込みし、カメラの権利を完全に解放する
+      location.reload();
     }, 50);
   };
 
@@ -272,7 +246,6 @@ function openQRScannerModal() {
     .catch(err => {
       alert("カメラの起動に失敗しました。ブラウザの許可を確認してください。");
       console.error(err);
-      html5QrCode = null;
     });
 }
 
@@ -280,9 +253,14 @@ function closeQRScannerModal() {
   const overlay = document.getElementById('qr-scanner-overlay');
   if (overlay) {
     overlay.style.display = 'none';
-    if (html5QrCode && !isCameraPaused) {
-      html5QrCode.pause();
-      isCameraPaused = true;
+    
+    // ★大改修：閉じた場合も、カメラの緑のビデオマークを確実に消すために強制リロードする
+    // （※カメラ起動中に「キャンセル」を押した時のみリロードを発動）
+    if (html5QrCode) {
+      html5QrCode.stop().catch(err => console.log(err)).finally(() => {
+        html5QrCode = null;
+        location.reload();
+      });
     }
   }
 }
