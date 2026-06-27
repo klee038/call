@@ -297,10 +297,8 @@ function resumeHistory(index) {
   let matchItem = historyList[index];
   let state = matchItem.state || matchItem;
 
-  // 抽出した状態をアプリに適用してワープさせる
   resumeMatchFromState(state);
 
-  // 履歴から削除して上書き
   historyList.splice(index, 1);
   localStorage.setItem('call_match_history', JSON.stringify(historyList));
   if (typeof saveActiveBackup === 'function') saveActiveBackup();
@@ -358,6 +356,9 @@ function resumeMatchFromState(state) {
     try { matchTimeline = JSON.parse(matchTimeline); } catch(e) { matchTimeline = []; }
   }
   
+  // ★大修正：ワープ直後の不要な `boardSave()` を削除。
+  // QRコードから届いた `hist` と `recorderData` をそのまま信じてセットするだけで、
+  // 戻るボタンもPDF機能も完璧に引き継がれ、空回りも一切起きないようになります。
   hist = state.hist || [];
   redoStack = state.redoStack || [];
 
@@ -373,25 +374,12 @@ function resumeMatchFromState(state) {
     }
   }
 
-  // ★大修正：処理順序の変更
-  // ① まず安全装置を外すため、確実に flowStep を 3 にして「試合モード」であることをアプリに認識させる
+  // ワープ前にアプリを試合モード（flowStep=3）に切り替える
   flowStep = 3;
 
-  // ② もしQRから復元された履歴（hist）があれば、最新の1個を一旦捨てる（空回り防止）
-  if (hist.length > 0) {
-    hist.pop();
-  }
-  
-  // ③ その上で「今の状態」を強制的に履歴に保存し直す。
-  // （flowStep=3になっているのでセーブは弾かれず、PDFエンジンとも完璧に同期される）
-  if (typeof boardSave === 'function') {
-    boardSave();
-  }
-
-  // ④ アクティブバックアップとしてローカルストレージに固定する
+  // 最新の状態としてアクティブバックアップを上書き保存する（PDFの出力に必須）
   if (typeof saveActiveBackup === 'function') saveActiveBackup();
 
-  // ⑤ 最後に画面UIを切り替えて描画する
   document.getElementById("game-flow-container").style.display = "none";
   document.getElementById("board-ui").style.display = "flex";
   
