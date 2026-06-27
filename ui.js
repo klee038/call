@@ -228,26 +228,19 @@ function openQRScannerModal() {
   html5QrCode = new Html5Qrcode("qr-reader");
 
   const onScanSuccess = async (decodedText, decodedResult) => {
-    // もしすでに揃っていれば無視
     if (totalChunksExpected > 0 && scannedChunks.filter(Boolean).length === totalChunksExpected) return;
 
-    // 今回は分割QR対応のため、プレフィックス "QRX:" を探す
-    if (!decodedText.startsWith("QRX:")) {
-      // 古い単一QRや関係ないQRの場合は無視
-      return;
-    }
+    if (!decodedText.startsWith("QRX:")) return;
 
     try {
-      // 形式: "QRX:1/5:実際のBase64データ"
       const parts = decodedText.split(':');
       if (parts.length < 3) return;
       
-      const meta = parts[1].split('/'); // "1/5" -> ["1", "5"]
-      const currentIndex = parseInt(meta[0], 10) - 1; // 配列用に0スタート
+      const meta = parts[1].split('/');
+      const currentIndex = parseInt(meta[0], 10) - 1;
       const total = parseInt(meta[1], 10);
       const dataStr = parts.slice(2).join(':');
 
-      // 初めて総数が分かったら、ドット（グレー）を描画する
       if (totalChunksExpected === 0) {
         totalChunksExpected = total;
         if (dotsContainer) {
@@ -257,18 +250,15 @@ function openQRScannerModal() {
         }
       }
 
-      // まだ持っていないピースならストックし、ドットを緑色に点灯させる
       if (!scannedChunks[currentIndex]) {
         scannedChunks[currentIndex] = dataStr;
         const targetDot = document.getElementById(`qr-dot-${currentIndex}`);
-        if (targetDot) targetDot.style.backgroundColor = '#10B981'; // 綺麗な緑色
+        if (targetDot) targetDot.style.backgroundColor = '#10B981';
       }
 
-      // 全てのピースが揃ったか判定
       const collectedCount = scannedChunks.filter(Boolean).length;
       if (collectedCount === totalChunksExpected) {
         
-        // 全部揃ったらカメラを停止し、クルクルを表示
         if (html5QrCode) {
           try {
             await html5QrCode.stop();
@@ -279,7 +269,6 @@ function openQRScannerModal() {
         if (reader) reader.style.display = 'none';
         if (spinner) spinner.style.display = 'flex';
 
-        // 結合して解凍・ワープ処理（非同期で描画の隙間を作る）
         setTimeout(() => {
           try {
             let fullBase64 = scannedChunks.join('');
@@ -340,13 +329,12 @@ function closeQRScannerModal() {
 }
 
 /**
- * 【出力側】ダイレクトQR表示（アニメーションQR方式）
+ * 【出力側】ダイレクトQR表示（アニメーションQR方式：超低密度版）
  */
 function openQROutputModal(index) {
   const overlay = document.getElementById('qr-direct-overlay');
   if (!overlay) return;
   
-  // タイマーが残っていればリセット
   if (qrAnimationTimer) {
     clearInterval(qrAnimationTimer);
     qrAnimationTimer = null;
@@ -359,8 +347,6 @@ function openQROutputModal(index) {
     
     let state = JSON.parse(JSON.stringify(matchItem.state || matchItem));
     
-    // 中断試合として、最低限の「今の点数」だけは戻れるように、最新の履歴のみ残す
-    // PDFデータはそのまま維持する
     if (state.hist && state.hist.length > 0) {
       let latestHist = state.hist[state.hist.length - 1];
       state.hist = [latestHist];
@@ -379,8 +365,8 @@ function openQROutputModal(index) {
     }
     let fullBase64String = btoa(binaryString);
     
-    // ★大改修：Base64文字列を約300文字ずつの破片（チャンク）に分割する
-    const chunkSize = 300; 
+    // ★大改修：1枚あたりの文字数を 100文字 に減らし、ドットを極限まで粗く（低バージョンに）する
+    const chunkSize = 100; 
     let chunks = [];
     for (let i = 0; i < fullBase64String.length; i += chunkSize) {
       chunks.push(fullBase64String.substring(i, i + chunkSize));
@@ -395,7 +381,6 @@ function openQROutputModal(index) {
     let canvas = document.createElement('canvas');
     canvas.style.cssText = "width: 100% !important; height: 100% !important; max-width: 100% !important; max-height: 100% !important; object-fit: contain; display: block;";
     
-    // アニメーション中の何枚目かを表示する小さなカウンター
     let counterLabel = document.createElement('div');
     counterLabel.style.cssText = "position: absolute; bottom: 5px; right: 10px; font-size: 10px; color: #999; font-family: monospace;";
     
@@ -404,10 +389,8 @@ function openQROutputModal(index) {
     overlay.appendChild(qrContainer);
     overlay.style.display = 'flex';
 
-    // パラパラ描画する関数
     let currentDrawIndex = 0;
     const drawNextQR = () => {
-      // 形式: "QRX:何枚目/総数:実際のデータ"
       let payload = `QRX:${currentDrawIndex + 1}/${totalChunks}:${chunks[currentDrawIndex]}`;
       
       QRCode.toCanvas(canvas, payload, {
@@ -419,15 +402,13 @@ function openQROutputModal(index) {
       });
       
       counterLabel.innerText = `${currentDrawIndex + 1} / ${totalChunks}`;
-      
-      // 次のインデックスへ（ループ）
       currentDrawIndex = (currentDrawIndex + 1) % totalChunks;
     };
 
-    // 最初の1枚目を即描画し、その後は0.4秒間隔で切り替え続ける
+    // ★大改修：QRの切り替え速度を 0.25秒（250ミリ秒）に高速化し、読み取り時間を短縮
     drawNextQR();
     if (totalChunks > 1) {
-      qrAnimationTimer = setInterval(drawNextQR, 400); // 400ミリ秒 = 0.4秒
+      qrAnimationTimer = setInterval(drawNextQR, 250); 
     }
     
   } catch (e) {
@@ -444,7 +425,6 @@ function closeQROutputModal() {
   if (overlay) {
     overlay.style.display = 'none';
     overlay.innerHTML = ''; 
-    // タイマーを止めてパラパラを終了
     if (qrAnimationTimer) {
       clearInterval(qrAnimationTimer);
       qrAnimationTimer = null;
