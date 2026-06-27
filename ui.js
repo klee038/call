@@ -419,7 +419,7 @@ function openQROutputModal(index) {
     // ★大改修：切り替え速度を0.15秒に高速化（マシンガンスキャン）
     drawNextQR();
     if (totalChunks > 1) {
-      qrAnimationTimer = setInterval(drawNextQR, 150); 
+      qrAnimationTimer = setInterval(drawNextQR, 80); 
     }
     
   } catch (e) {
