@@ -186,15 +186,22 @@ function syncBoardDOM() {
 // QRスキャナー・出力モーダル開閉と圧縮/解凍ロジック
 // =========================================
 
-// ★修正：カメラ一時停止(pause)をやめ、完全に停止・破棄(stop)する元の安全なロジックに戻す
 let html5QrCode = null;
+let isCameraPaused = false;
 
 /**
- * 【入力側】QRスキャナーモーダルを開き、カメラを起動する
+ * 【入力側】QRスキャナーモーダルを開き、カメラを起動（または再開）する
  */
 function openQRScannerModal() {
   const overlay = document.getElementById('qr-scanner-overlay');
+  const reader = document.getElementById('qr-reader');
+  const spinner = document.getElementById('qr-loading-spinner');
+  
   if (!overlay) return;
+  
+  // モーダルを開くたびに初期状態（カメラ表示、クルクル非表示）にリセット
+  if (reader) reader.style.display = 'block';
+  if (spinner) spinner.style.display = 'none';
   overlay.style.display = 'flex';
 
   if (typeof Html5Qrcode === 'undefined') {
@@ -202,44 +209,57 @@ function openQRScannerModal() {
     return;
   }
 
-  // もし前のカメラが残っていれば確実にストップして破棄する
-  if (html5QrCode) {
-    try { 
-      html5QrCode.stop().then(() => { html5QrCode = null; }).catch(e => { html5QrCode = null; });
-    } catch(e) { html5QrCode = null; }
+  if (html5QrCode && isCameraPaused) {
+    html5QrCode.resume();
+    isCameraPaused = false;
+    return;
   }
 
-  // 毎回新しいインスタンスとしてクリーンに起動する
   html5QrCode = new Html5Qrcode("qr-reader");
 
   const onScanSuccess = (decodedText, decodedResult) => {
-    // 成功したらすぐにカメラを完全に停止(stop)し、リソースを手放す
+    // 成功したらカメラを一時停止
     if (html5QrCode) {
-      html5QrCode.stop().then(() => {
-        html5QrCode = null;
-      }).catch(err => console.log("カメラ停止エラー", err));
+      html5QrCode.pause();
+      isCameraPaused = true;
     }
 
-    try {
-      let binaryString = atob(decodedText);
-      let charArray = binaryString.split('').map(c => c.charCodeAt(0));
-      let uint8Array = new Uint8Array(charArray);
+    // ★非同期処理：先にカメラを隠してクルクルを表示し、ブラウザに描画させる隙間を与える
+    if (reader) reader.style.display = 'none';
+    if (spinner) spinner.style.display = 'flex';
 
-      let decompressedUint8 = pako.inflate(uint8Array);
-      let decompressedText = new TextDecoder().decode(decompressedUint8);
-      let matchData = JSON.parse(decompressedText);
-      
-      if (typeof resumeMatchFromState === 'function') {
-        resumeMatchFromState(matchData);
-      } else {
-        alert("復元・ワープ用の関数が見つかりません。");
+    // 50ミリ秒後に重い解凍・ワープ処理をスタートさせる
+    setTimeout(() => {
+      try {
+        let binaryString = atob(decodedText);
+        let charArray = binaryString.split('').map(c => c.charCodeAt(0));
+        let uint8Array = new Uint8Array(charArray);
+
+        let decompressedUint8 = pako.inflate(uint8Array);
+        let decompressedText = new TextDecoder().decode(decompressedUint8);
+        let matchData = JSON.parse(decompressedText);
+        
+        if (typeof resumeMatchFromState === 'function') {
+          resumeMatchFromState(matchData);
+        } else {
+          alert("復元・ワープ用の関数が見つかりません。");
+        }
+        
+        // ワープ成功したらモーダルを閉じる
+        overlay.style.display = 'none';
+        
+      } catch (e) {
+        alert("QRコードの解読に失敗しました。データ形式が正しくありません。");
+        console.error(e);
+        // 失敗した場合はエラーを出して、再びカメラ画面に戻す
+        if (spinner) spinner.style.display = 'none';
+        if (reader) reader.style.display = 'block';
+        if (html5QrCode && isCameraPaused) {
+          html5QrCode.resume();
+          isCameraPaused = false;
+        }
       }
-      
-    } catch (e) {
-      alert("QRコードの解読に失敗しました。データ形式が正しくありません。");
-      console.error(e);
-    }
-    overlay.style.display = 'none';
+    }, 50);
   };
 
   const cameraConfig = { facingMode: "environment" };
@@ -252,6 +272,7 @@ function openQRScannerModal() {
     .catch(err => {
       alert("カメラの起動に失敗しました。ブラウザの許可を確認してください。");
       console.error(err);
+      html5QrCode = null;
     });
 }
 
@@ -259,11 +280,9 @@ function closeQRScannerModal() {
   const overlay = document.getElementById('qr-scanner-overlay');
   if (overlay) {
     overlay.style.display = 'none';
-    // 閉じる時も完全に停止(stop)してバッテリー消費を防ぐ
-    if (html5QrCode) {
-      html5QrCode.stop().then(() => {
-        html5QrCode = null;
-      }).catch(err => console.log("カメラ停止エラー", err));
+    if (html5QrCode && !isCameraPaused) {
+      html5QrCode.pause();
+      isCameraPaused = true;
     }
   }
 }
@@ -298,19 +317,15 @@ function openQROutputModal(index) {
     
     overlay.innerHTML = ""; 
     
-    // ★大修正：Safariのツールバー等に影響されない、最強の「はみ出し防止CSS」
     let qrContainer = document.createElement('div');
-    // 幅・高さを画面の短い方(vmin)の80%に設定し、絶対に画面からはみ出さないようにロック
-    qrContainer.style.cssText = "width: 80vmin; height: 80vmin; max-width: 400px; max-height: 400px; background-color: #ffffff; border-radius: 12px; padding: 15px; box-sizing: border-box; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; overflow: hidden;";
+    qrContainer.style.cssText = "width: 80vw; height: 80vw; max-width: 400px; max-height: 400px; background-color: #ffffff; border-radius: 12px; padding: 15px; box-sizing: border-box; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; overflow: hidden;";
     
     let canvas = document.createElement('canvas');
-    // キャンバスは親(qrContainer)の内部サイズ(100%)に完全に追従する
     canvas.style.cssText = "width: 100% !important; height: 100% !important; max-width: 100% !important; max-height: 100% !important; object-fit: contain; display: block;";
     
     qrContainer.appendChild(canvas);
     overlay.appendChild(qrContainer);
     
-    // ピクセル指定を外し、CSSの枠サイズに自動で合わせる
     QRCode.toCanvas(canvas, base64String, {
       margin: 1,
       color: {
