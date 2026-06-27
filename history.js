@@ -361,13 +361,11 @@ function resumeMatchFromState(state) {
   hist = state.hist || [];
   redoStack = state.redoStack || [];
 
-  // ★修正：QRから受け取った recorderData（PDFの命）を確実にアプリの Recorder にロードさせる
   if (typeof Recorder !== 'undefined') {
     try {
       if (state.recorderData) {
         Recorder.loadData(state.recorderData);
       } else {
-        // データが欠落している場合（初期設定QRなど）はクリーンな状態で初期化する
         Recorder.initMatch(flowIsDouble, tL, tR, nL1, nL2, nR1, nR2);
       }
     } catch(e) {
@@ -375,7 +373,12 @@ function resumeMatchFromState(state) {
     }
   }
 
-  // データを保存し、画面を切り替える
+  // ★修正：ワープ直後に「現在の状態」を強制的に履歴(hist)に保存し、UIと同期させる
+  // これにより、ワープ直後からUndoボタンが光り、PDF出力データも確定する
+  if (typeof boardSave === 'function') {
+      boardSave();
+  }
+
   if (typeof saveActiveBackup === 'function') saveActiveBackup();
 
   document.getElementById("game-flow-container").style.display = "none";
