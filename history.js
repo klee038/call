@@ -373,20 +373,25 @@ function resumeMatchFromState(state) {
     }
   }
 
-  // ★大修正：ワープ直後のPDF白紙問題と戻るボタン空回りを解消する
-  // もしQRから復元された履歴（hist）があれば、最新の1個を一旦捨てる
+  // ★大修正：処理順序の変更
+  // ① まず安全装置を外すため、確実に flowStep を 3 にして「試合モード」であることをアプリに認識させる
+  flowStep = 3;
+
+  // ② もしQRから復元された履歴（hist）があれば、最新の1個を一旦捨てる（空回り防止）
   if (hist.length > 0) {
     hist.pop();
   }
   
-  // その上で「今の状態」を強制的に履歴に保存し直すことで、
-  // システムとPDFエンジン（Recorder）を完全に同期・確定させる
+  // ③ その上で「今の状態」を強制的に履歴に保存し直す。
+  // （flowStep=3になっているのでセーブは弾かれず、PDFエンジンとも完璧に同期される）
   if (typeof boardSave === 'function') {
     boardSave();
   }
 
+  // ④ アクティブバックアップとしてローカルストレージに固定する
   if (typeof saveActiveBackup === 'function') saveActiveBackup();
 
+  // ⑤ 最後に画面UIを切り替えて描画する
   document.getElementById("game-flow-container").style.display = "none";
   document.getElementById("board-ui").style.display = "flex";
   
@@ -398,6 +403,4 @@ function resumeMatchFromState(state) {
     if (typeof syncBoardDOM === 'function') syncBoardDOM();
     if (typeof triggerBannerDisplay === 'function') triggerBannerDisplay(needsOverlay);
   }
-  
-  flowStep = 3;
 }
