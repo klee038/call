@@ -297,7 +297,7 @@ function resumeHistory(index) {
   let matchItem = historyList[index];
   let state = matchItem.state || matchItem;
 
-  // 抽出した状態をアプリに適用してワープさせる（新設した共通関数を利用）
+  // 抽出した状態をアプリに適用してワープさせる
   resumeMatchFromState(state);
 
   // 履歴から削除して上書き
@@ -361,8 +361,18 @@ function resumeMatchFromState(state) {
   hist = state.hist || [];
   redoStack = state.redoStack || [];
 
+  // ★修正：QRから受け取った recorderData（PDFの命）を確実にアプリの Recorder にロードさせる
   if (typeof Recorder !== 'undefined') {
-    Recorder.loadData(state.recorderData);
+    try {
+      if (state.recorderData) {
+        Recorder.loadData(state.recorderData);
+      } else {
+        // データが欠落している場合（初期設定QRなど）はクリーンな状態で初期化する
+        Recorder.initMatch(flowIsDouble, tL, tR, nL1, nL2, nR1, nR2);
+      }
+    } catch(e) {
+      console.warn("Recorderデータの復元に失敗しました", e);
+    }
   }
 
   // データを保存し、画面を切り替える
