@@ -223,7 +223,12 @@ function renderFlow() {
           </div>` : ''}
         </div>
       </div>
-      <button class="action-btn" onclick="flowNext()">NEXT</button>
+      
+      <!-- ★大改修：一番下のボタンを「QR発行(本部用)」と「NEXT」に分割配置 -->
+      <div style="display: flex; justify-content: space-between; gap: 15px; margin-top: 25px;">
+        <button class="action-btn" style="flex: 1; min-width: 0; background: #8B5CF6 !important; border-color: #8B5CF6;" onclick="previewAndGenerateStartQR()">GENERATE QR</button>
+        <button class="action-btn" style="flex: 1; min-width: 0; margin-top: 0 !important;" onclick="flowNext()">NEXT</button>
+      </div>
     `;
   } 
   else if (flowStep === 3) {
@@ -378,6 +383,50 @@ function setIntervalOption(val) { flowHasInterval = val; renderFlow(); }
 function setSettingOpt(val) { flowHasSetting = val; renderFlow(); }
 function setCourtSelect(val) { flowHasCourtSelect = val; renderFlow(); }
 
+// =========================================
+// ★新設：送信側（本部）の確認ダイアログとQR発行処理
+// =========================================
+function previewAndGenerateStartQR() {
+  let tLVal = document.getElementById("input-tl").value.trim();
+  let tRVal = document.getElementById("input-tr").value.trim();
+  let pL1Val = document.getElementById("input-pl1").value.trim() || "PlayerA1";
+  let pR1Val = document.getElementById("input-pr1").value.trim() || "PlayerB1";
+  let pL2Val = document.getElementById("input-pl2") ? document.getElementById("input-pl2").value.trim() || "PlayerA2" : "";
+  let pR2Val = document.getElementById("input-pr2") ? document.getElementById("input-pr2").value.trim() || "PlayerB2" : "";
+
+  let typeStr = flowIsDouble ? "ダブルス" : "シングルス";
+  let ruleStr = `${typeStr} / ${flowMaxGames}G / ${flowMaxPoints}pt`;
+  let leftTeamStr = tLVal ? `[${tLVal}] ` : "";
+  let rightTeamStr = tRVal ? `[${tRVal}] ` : "";
+  let leftPlayers = flowIsDouble ? `${pL1Val} & ${pL2Val}` : pL1Val;
+  let rightPlayers = flowIsDouble ? `${pR1Val} & ${pR2Val}` : pR1Val;
+
+  let confirmMsg = `以下の情報で開始QRを発行しますか？\n\n` +
+                   `【ルール】${ruleStr}\n\n` +
+                   `【LEFT】${leftTeamStr}${leftPlayers}\n` +
+                   `【RIGHT】${rightTeamStr}${rightPlayers}`;
+
+  if (confirm(confirmMsg)) {
+    // 承認されたら、入力中の情報をオブジェクトに組み立てて ui.js のQR生成関数に直接投げる
+    let matchData = {
+      flowIsDouble: flowIsDouble,
+      flowMaxGames: flowMaxGames,
+      flowMaxPoints: flowMaxPoints,
+      flowHasCE: flowHasCE,
+      flowHasInterval: flowHasInterval,
+      flowHasSetting: flowHasSetting,
+      flowHasCourtSelect: flowHasCourtSelect,
+      tL: tLVal,
+      tR: tRVal,
+      n: [pL1Val, pL2Val, pR1Val, pR2Val]
+    };
+    if (typeof generateStartMatchQR === 'function') {
+      generateStartMatchQR(matchData);
+    }
+  }
+}
+
+
 function flowNext() {
   if (flowStep === 1) {
     flowStep = 2;
@@ -418,9 +467,6 @@ function flowBack() {
   }
 }
 
-// =========================================
-// ★完全復元：設定（SETTINGS）画面のロジック
-// =========================================
 let tempSettings = {};
 
 function openSettingModal() {
@@ -601,6 +647,41 @@ document.addEventListener('click', resetWakeLockTimer, {passive: true});
 // QRスキャンデータの受け取りと自動ワープ処理
 // =========================================
 
+function checkScannedQRDataOnLoad() {
+  let scannedDataString = sessionStorage.getItem('call_qr_scanned_data');
+  if (scannedDataString) {
+    try {
+      let binaryString = atob(scannedDataString);
+      let charArray = binaryString.split('').map(c => c.charCodeAt(0));
+      let uint8Array = new Uint8Array(charArray);
+      let decompressedUint8 = pako.inflate(uint8Array);
+      let decompressedText = new TextDecoder().decode(decompressedUint8);
+      let matchData = JSON.parse(decompressedText);
+
+      sessionStorage.removeItem('call_qr_scanned_data');
+
+      let isMatchInProgress = (matchData.sL > 0 || matchData.sR > 0 || matchData.gL > 0 || matchData.gR > 0);
+
+      if (isMatchInProgress) {
+        if (typeof resumeMatchFromState === 'function') {
+          setTimeout(() => { resumeMatchFromState(matchData); }, 100);
+        }
+      } else {
+        setTimeout(() => { applyScannedMatchData(matchData); }, 100);
+      }
+
+    } catch (e) {
+      console.error("QRデータの復元に失敗しました", e);
+      sessionStorage.removeItem('call_qr_scanned_data');
+    }
+  }
+}
+checkScannedQRDataOnLoad();
+
+
+// =========================================
+// ★改修：受信側（主審）の確認ダイアログとフロー振り分け
+// =========================================
 function processScannedData(data) {
   if (!data || typeof data !== 'object') {
     alert("無効なデータ形式です。");
@@ -630,7 +711,7 @@ function processScannedData(data) {
         status: "FINISHED",
         score: matchScoreStr,
         details: gameDetails,
-        state: data // 過去の記録（PDF用データ含む）を全て丸ごと保存
+        state: data 
       };
 
       historyList.unshift(newItem);
@@ -660,26 +741,48 @@ function processScannedData(data) {
       resumeMatchFromState(data);
     }
   } else {
-    flowIsDouble = (data.flowIsDouble !== undefined) ? data.flowIsDouble : (data.d !== undefined ? data.d : true);
-    flowMaxGames = (data.flowMaxGames !== undefined) ? data.flowMaxGames : (data.g !== undefined ? data.g : 3);
-    flowMaxPoints = (data.flowMaxPoints !== undefined) ? data.flowMaxPoints : (data.p !== undefined ? data.p : 15);
-    flowHasSetting = (data.flowHasSetting !== undefined) ? data.flowHasSetting : (data.s !== undefined ? data.s : true);
-    flowHasCourtSelect = (data.flowHasCourtSelect !== undefined) ? data.flowHasCourtSelect : (data.hc !== undefined ? data.hc : true);
-    
-    txtTL = data.tL || "";
-    txtTR = data.tR || "";
-    
+    // 【本部からの初期データ受信時の確認ダイアログ】
+    let isD = (data.flowIsDouble !== undefined) ? data.flowIsDouble : (data.d !== undefined ? data.d : true);
     let names = Array.isArray(data.n) ? data.n : [];
-    txtPL1 = data.nL1 || names[0] || "";
-    txtPL2 = flowIsDouble ? (data.nL2 || names[1] || "") : "";
-    txtPR1 = data.nR1 || names[2] || "";
-    txtPR2 = flowIsDouble ? (data.nR2 || names[3] || "") : "";
+    let l1 = data.nL1 || names[0] || "PlayerA1";
+    let l2 = isD ? (data.nL2 || names[1] || "PlayerA2") : "";
+    let r1 = data.nR1 || names[2] || "PlayerB1";
+    let r2 = isD ? (data.nR2 || names[3] || "PlayerB2") : "";
+    
+    let lTeam = data.tL ? `[${data.tL}] ` : "";
+    let rTeam = data.tR ? `[${data.tR}] ` : "";
+    
+    let lPlayers = isD ? `${l1} & ${l2}` : l1;
+    let rPlayers = isD ? `${r1} & ${r2}` : r1;
+    
+    let confirmMsg = `以下の試合データを受信しました。\nこの試合を開始（トス画面へ移動）しますか？\n\n` +
+                     `【LEFT】${lTeam}${lPlayers}\n` +
+                     `【RIGHT】${rTeam}${rPlayers}`;
 
-    if (flowHasCourtSelect) {
-      flowStep = 3;
+    // ★ OK が押された場合のみ代入してトス画面へ進む
+    if (confirm(confirmMsg)) {
+      flowIsDouble = isD;
+      flowMaxGames = (data.flowMaxGames !== undefined) ? data.flowMaxGames : (data.g !== undefined ? data.g : 3);
+      flowMaxPoints = (data.flowMaxPoints !== undefined) ? data.flowMaxPoints : (data.p !== undefined ? data.p : 15);
+      flowHasSetting = (data.flowHasSetting !== undefined) ? data.flowHasSetting : (data.s !== undefined ? data.s : true);
+      flowHasCourtSelect = (data.flowHasCourtSelect !== undefined) ? data.flowHasCourtSelect : (data.hc !== undefined ? data.hc : true);
+      
+      txtTL = data.tL || "";
+      txtTR = data.tR || "";
+      txtPL1 = data.nL1 || names[0] || "";
+      txtPL2 = isD ? (data.nL2 || names[1] || "") : "";
+      txtPR1 = data.nR1 || names[2] || "";
+      txtPR2 = isD ? (data.nR2 || names[3] || "") : "";
+
+      if (flowHasCourtSelect) {
+        flowStep = 3;
+      } else {
+        flowStep = 1; // コート選択なしは通常あり得ないが安全のため
+      }
+      renderFlow();
     } else {
-      flowStep = 1;
+      // CANCEL された場合は何事もなかったかのように元の画面を描画し直す
+      renderFlow();
     }
-    renderFlow();
   }
 }
