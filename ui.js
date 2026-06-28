@@ -200,11 +200,11 @@ let totalChunksExpected = 0;
  */
 function openQRScannerModal() {
   const overlay = document.getElementById('qr-scanner-overlay');
-  const reader = document.getElementById('qr-reader');
+  const wrapper = document.getElementById('qr-reader-wrapper');
   const spinner = document.getElementById('qr-loading-spinner');
   const dotsContainer = document.getElementById('qr-progress-dots');
   
-  if (!overlay) return;
+  if (!overlay || !wrapper) return;
   
   scannedChunks = [];
   totalChunksExpected = 0;
@@ -214,7 +214,10 @@ function openQRScannerModal() {
     dotsContainer.style.flexWrap = 'wrap'; 
   }
   
-  if (reader) reader.style.display = 'block';
+  // ★DOMの完全再錬成ロジック：毎回必ず新品のDOMを作り直す
+  wrapper.innerHTML = `<div id="qr-reader" style="width: 100%; min-height: 250px; background-color: #000; border: 1px solid #333; border-radius: 8px;"></div>`;
+  wrapper.style.display = 'block';
+  
   if (spinner) spinner.style.display = 'none';
   overlay.style.display = 'flex';
 
@@ -223,7 +226,7 @@ function openQRScannerModal() {
     return;
   }
 
-  // ★修正：一時停止等の古いロジックを全削除し、毎回必ず「完全新規（new）」で作り直す
+  // 新品のDOMに対してカメラインスタンスを生成
   html5QrCode = new Html5Qrcode("qr-reader");
 
   const onScanSuccess = async (decodedText, decodedResult) => {
@@ -257,7 +260,7 @@ function openQRScannerModal() {
       const collectedCount = scannedChunks.filter(Boolean).length;
       if (collectedCount === totalChunksExpected) {
         
-        // ★修正：読み取り成功時も、画面を隠す前に確実にカメラを完全停止・破棄する
+        // スキャン成功時：カメラ停止 -> 破棄 -> DOM爆破 の順に処理
         const stopCameraAndProcess = async () => {
           if (html5QrCode) {
             try {
@@ -272,7 +275,10 @@ function openQRScannerModal() {
             }
           }
           
-          if (reader) reader.style.display = 'none';
+          // ★DOMの完全爆破
+          wrapper.innerHTML = "";
+          wrapper.style.display = 'none';
+          
           if (spinner) spinner.style.display = 'flex';
 
           setTimeout(() => {
@@ -293,14 +299,12 @@ function openQRScannerModal() {
               }
               
               overlay.style.display = 'none';
-              if (reader) reader.style.display = 'block';
               if (spinner) spinner.style.display = 'none';
 
             } catch (e) {
               alert("QRコードの結合・解読に失敗しました。");
               console.error(e);
               if (spinner) spinner.style.display = 'none';
-              if (reader) reader.style.display = 'block';
             }
           }, 50);
         };
@@ -328,13 +332,14 @@ function openQRScannerModal() {
 }
 
 /**
- * ★修正：モーダルを閉じる際のカメラの「完全破棄（null化）」
+ * ★キャンセル時：モーダルを閉じる際のカメラの完全破棄と「DOMの完全爆破」
  */
 async function closeQRScannerModal() {
   const overlay = document.getElementById('qr-scanner-overlay');
+  const wrapper = document.getElementById('qr-reader-wrapper');
   if (!overlay) return;
   
-  // 1. 画面(DOM)を消す前に、確実にカメラの停止と初期化を行う
+  // 1. 確実にカメラの停止と初期化を行う
   if (html5QrCode) {
     try {
       if (html5QrCode.isScanning) {
@@ -349,13 +354,15 @@ async function closeQRScannerModal() {
     }
   }
   
-  // 3. カメラが完全に死んだことを確認してから画面を隠す
+  // 3. ★DOMの完全爆破：次回のフリーズを防ぐため要素ごと消し去る
+  if (wrapper) {
+      wrapper.innerHTML = "";
+  }
+  
+  // 4. カメラとDOMが完全に死んだことを確認してから画面を隠す
   overlay.style.display = 'none';
   
-  // 次回開くときのためにUIの状態をリセット
-  const reader = document.getElementById('qr-reader');
   const spinner = document.getElementById('qr-loading-spinner');
-  if (reader) reader.style.display = 'block';
   if (spinner) spinner.style.display = 'none';
 }
 

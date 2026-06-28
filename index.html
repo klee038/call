@@ -234,7 +234,8 @@
     <div class="roster-header" style="margin-bottom: 10px;">SCAN CODE</div>
     <div style="color: #A1A1AA; font-size: 13px; text-align: center; margin-bottom: 20px;">本部のQRコードをスキャンしてください</div>
     
-    <div id="qr-reader" style="width: 100%; min-height: 250px; background-color: #000; border: 1px solid #333; border-radius: 8px; margin-bottom: 10px;"></div>
+    <!-- ★修正：直のDOMを削除し、空のラッパーを設置 -->
+    <div id="qr-reader-wrapper" style="width: 100%; min-height: 250px; margin-bottom: 10px;"></div>
     
     <!-- 進捗状況を視覚的に伝えるプログレスバー（ドット） -->
     <div id="qr-progress-dots" style="display: flex; gap: 8px; justify-content: center; margin-bottom: 20px; min-height: 12px;"></div>
