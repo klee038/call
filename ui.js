@@ -214,13 +214,11 @@ function openQRScannerModal() {
     dotsContainer.style.flexWrap = 'wrap'; 
   }
   
-  // ★DOMの完全再錬成ロジック：毎回必ず新品のDOMを作り直す
   wrapper.innerHTML = `<div id="qr-reader" style="width: 100%; min-height: 250px; background-color: #000; border: 1px solid #333; border-radius: 8px;"></div>`;
   wrapper.style.display = 'block';
   
   if (spinner) spinner.style.display = 'none';
   
-  // 1. まず画面を表示する
   overlay.style.display = 'flex';
 
   if (typeof Html5Qrcode === 'undefined') {
@@ -228,9 +226,7 @@ function openQRScannerModal() {
     return;
   }
 
-  // ★追加：iPhoneが枠のレイアウトサイズを計算完了するまで0.3秒待つ
   setTimeout(() => {
-    // 待っている間に「キャンセル」された場合は処理を中断
     if (overlay.style.display === 'none') return;
 
     if (html5QrCode) {
@@ -238,7 +234,6 @@ function openQRScannerModal() {
       html5QrCode = null;
     }
 
-    // 新品のDOMに対してカメラインスタンスを生成
     html5QrCode = new Html5Qrcode("qr-reader");
 
     const onScanSuccess = async (decodedText, decodedResult) => {
@@ -272,7 +267,6 @@ function openQRScannerModal() {
         const collectedCount = scannedChunks.filter(Boolean).length;
         if (collectedCount === totalChunksExpected) {
           
-          // スキャン成功時：カメラ停止 -> 破棄 -> DOM爆破 の順に処理
           const stopCameraAndProcess = async () => {
             if (html5QrCode) {
               try {
@@ -287,7 +281,6 @@ function openQRScannerModal() {
               }
             }
             
-            // ★DOMの完全爆破
             wrapper.innerHTML = "";
             wrapper.style.display = 'none';
             
@@ -331,7 +324,6 @@ function openQRScannerModal() {
 
     const cameraConfig = { facingMode: "environment" };
     
-    // ★修正：オートマクロ対応（レスポンシブなqrboxとアスペクト比の固定）
     const config = { 
       fps: 15,
       aspectRatio: 1.0,
@@ -353,17 +345,15 @@ function openQRScannerModal() {
 }
 
 /**
- * ★キャンセル時：モーダルを閉じる際のカメラの完全破棄と「DOMの完全爆破」
+ * キャンセル時：モーダルを閉じる際のカメラの完全破棄と「DOMの完全爆破」
  */
 async function closeQRScannerModal() {
   const overlay = document.getElementById('qr-scanner-overlay');
   const wrapper = document.getElementById('qr-reader-wrapper');
   if (!overlay) return;
   
-  // 1. 割り込み起動を防ぐため、一番最初に画面を隠す
   overlay.style.display = 'none';
   
-  // 2. 確実にカメラの停止と初期化を行う
   if (html5QrCode) {
     try {
       if (html5QrCode.isScanning) {
@@ -373,12 +363,10 @@ async function closeQRScannerModal() {
     } catch (err) {
       console.warn("カメラ停止エラー", err);
     } finally {
-      // ブラウザに一切の未練を残さず変数を完全に空(null)にする
       html5QrCode = null;
     }
   }
   
-  // 3. ★DOMの完全爆破：次回のフリーズを防ぐため要素ごと消し去る
   if (wrapper) {
       wrapper.innerHTML = "";
       wrapper.style.display = 'none';
@@ -425,7 +413,6 @@ function openQROutputModal(index) {
     }
     let fullBase64String = btoa(binaryString);
     
-    // ★改善1：chunkSizeを40に減らし、QRの目を粗く（読み取りやすく）する
     const chunkSize = 40; 
     let chunks = [];
     for (let i = 0; i < fullBase64String.length; i += chunkSize) {
@@ -436,7 +423,6 @@ function openQROutputModal(index) {
     
     overlay.innerHTML = ""; 
     let qrContainer = document.createElement('div');
-    // ★改善3：サイズ縮小と外枠（border）の追加によるマクロレンズ・白飛び対策
     qrContainer.style.cssText = "width: 80vw; height: 80vw; max-width: 280px; max-height: 280px; background-color: #ffffff; border-radius: 12px; padding: 15px; box-sizing: border-box; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; overflow: hidden; position: relative; border: 10px solid #1C1C1E;";
     
     let canvas = document.createElement('canvas');
@@ -450,7 +436,6 @@ function openQROutputModal(index) {
     overlay.appendChild(qrContainer);
     overlay.style.display = 'flex';
 
-    // ★改善2：同調を防ぐシャッフル再生の導入
     let indices = Array.from({length: totalChunks}, (_, i) => i);
     const shuffleArray = (array) => {
       for (let i = array.length - 1; i > 0; i--) {
@@ -461,7 +446,6 @@ function openQROutputModal(index) {
 
     let currentStep = 0;
     const drawNextQR = () => {
-      // 1周するごとに再生順をシャッフルする
       if (currentStep === 0) {
         shuffleArray(indices);
       }
@@ -471,7 +455,7 @@ function openQROutputModal(index) {
       
       QRCode.toCanvas(canvas, payload, {
         margin: 1,
-        // ★改善1：version指定を外して自動最適化に任せる
+        version: 4, // ★サイズを一定にするためVersionを固定
         color: { dark: "#000000", light: "#ffffff" },
         errorCorrectionLevel: 'L'
       }, function (error) {
@@ -488,7 +472,8 @@ function openQROutputModal(index) {
 
     drawNextQR();
     if (totalChunks > 1) {
-      qrAnimationTimer = setInterval(drawNextQR, 120); 
+      // ★書き換え速度を100msに変更
+      qrAnimationTimer = setInterval(drawNextQR, 100); 
     }
     
   } catch (e) {
@@ -555,7 +540,6 @@ function openCurrentMatchQRModal() {
     }
     let fullBase64String = btoa(binaryString);
     
-    // ★改善1：chunkSizeを40に減らす
     const chunkSize = 40; 
     let chunks = [];
     for (let i = 0; i < fullBase64String.length; i += chunkSize) {
@@ -566,7 +550,6 @@ function openCurrentMatchQRModal() {
     
     overlay.innerHTML = ""; 
     let qrContainer = document.createElement('div');
-    // ★改善3：サイズ縮小と外枠（border）の追加
     qrContainer.style.cssText = "width: 80vw; height: 80vw; max-width: 280px; max-height: 280px; background-color: #ffffff; border-radius: 12px; padding: 15px; box-sizing: border-box; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; overflow: hidden; position: relative; border: 10px solid #1C1C1E;";
     
     let canvas = document.createElement('canvas');
@@ -580,7 +563,6 @@ function openCurrentMatchQRModal() {
     overlay.appendChild(qrContainer);
     overlay.style.display = 'flex';
 
-    // ★改善2：シャッフル再生の導入
     let indices = Array.from({length: totalChunks}, (_, i) => i);
     const shuffleArray = (array) => {
       for (let i = array.length - 1; i > 0; i--) {
@@ -600,7 +582,7 @@ function openCurrentMatchQRModal() {
       
       QRCode.toCanvas(canvas, payload, {
         margin: 1,
-        // ★改善1：version指定を外して自動最適化
+        version: 4, // ★サイズを一定にするためVersionを固定
         color: { dark: "#000000", light: "#ffffff" },
         errorCorrectionLevel: 'L'
       }, function (error) {
@@ -617,7 +599,8 @@ function openCurrentMatchQRModal() {
 
     drawNextQR();
     if (totalChunks > 1) {
-      qrAnimationTimer = setInterval(drawNextQR, 120); 
+      // ★書き換え速度を100msに変更
+      qrAnimationTimer = setInterval(drawNextQR, 100); 
     }
     
   } catch (e) {
@@ -649,7 +632,6 @@ function generateStartMatchQR(matchData) {
     }
     let fullBase64String = btoa(binaryString);
     
-    // ★改善1：chunkSizeを40に減らす
     const chunkSize = 40; 
     let chunks = [];
     for (let i = 0; i < fullBase64String.length; i += chunkSize) {
@@ -660,7 +642,6 @@ function generateStartMatchQR(matchData) {
     
     overlay.innerHTML = ""; 
     let qrContainer = document.createElement('div');
-    // ★改善3：サイズ縮小と外枠（border）の追加
     qrContainer.style.cssText = "width: 80vw; height: 80vw; max-width: 280px; max-height: 280px; background-color: #ffffff; border-radius: 12px; padding: 15px; box-sizing: border-box; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; overflow: hidden; position: relative; border: 10px solid #1C1C1E;";
     
     let canvas = document.createElement('canvas');
@@ -674,7 +655,6 @@ function generateStartMatchQR(matchData) {
     overlay.appendChild(qrContainer);
     overlay.style.display = 'flex';
 
-    // ★改善2：シャッフル再生の導入
     let indices = Array.from({length: totalChunks}, (_, i) => i);
     const shuffleArray = (array) => {
       for (let i = array.length - 1; i > 0; i--) {
@@ -694,7 +674,7 @@ function generateStartMatchQR(matchData) {
       
       QRCode.toCanvas(canvas, payload, {
         margin: 1,
-        // ★改善1：version指定を外して自動最適化
+        version: 4, // ★サイズを一定にするためVersionを固定
         color: { dark: "#000000", light: "#ffffff" },
         errorCorrectionLevel: 'L'
       }, function (error) {
@@ -711,7 +691,8 @@ function generateStartMatchQR(matchData) {
 
     drawNextQR();
     if (totalChunks > 1) {
-      qrAnimationTimer = setInterval(drawNextQR, 120); 
+      // ★書き換え速度を100msに変更
+      qrAnimationTimer = setInterval(drawNextQR, 100); 
     }
     
   } catch (e) {
