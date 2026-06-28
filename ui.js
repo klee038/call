@@ -417,8 +417,8 @@ function openQROutputModal(index) {
 
     drawNextQR();
     if (totalChunks > 1) {
-      // スピード設定 80ms に合わせてあります
-      qrAnimationTimer = setInterval(drawNextQR, 80); 
+      // スピード設定 50ms に合わせてあります
+      qrAnimationTimer = setInterval(drawNextQR, 50); 
     }
     
   } catch (e) {
