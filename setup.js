@@ -67,10 +67,15 @@ function renderFlow() {
 
   updateBoardFormatInfo();
 
+  // ★大改修：左上のスキャンボタンを「四隅の枠＋中央四角」の新しいスキャン用SVGに変更
+  const scanSvg = `<svg viewBox="0 0 24 24"><path d="M4 4h4v2H6v2H4V4zm16 0h-4v2h2v2h2V4zM4 20h4v-2H6v-2H4v4zm16 0h-4v-2h2v-2h2v4zM9 9h6v6H9V9z"/></svg>`;
+  // ★大改修：生成用のQRアイコンSVG（元々左上にあったもの）
+  const qrGenSvg = `<svg viewBox="0 0 24 24"><path d="M3 3h8v8H3V3zm2 2v4h4V5H5zm8-2h8v8h-8V3zm2 2v4h4V5h-4zM3 13h8v8H3v-8zm2 2v4h4v-4H5zm13-2h3v2h-3v-2zm-3 0h2v2h-2v-2zm3 3h3v2h-3v-2zm-3 0h2v4h-2v-4zm3 3h3v2h-3v-2z"/></svg>`;
+
   let leftHeaderActions = `
     <div style="display: flex; gap: 15px; align-items: center;">
       <button class="setting-icon-btn" onclick="openQRScannerModal()">
-        <svg viewBox="0 0 24 24"><path d="M3 3h8v8H3V3zm2 2v4h4V5H5zm8-2h8v8h-8V3zm2 2v4h4V5h-4zM3 13h8v8H3v-8zm2 2v4h4v-4H5zm13-2h3v2h-3v-2zm-3 0h2v2h-2v-2zm3 3h3v2h-3v-2zm-3 0h2v4h-2v-4zm3 3h3v2h-3v-2z"/></svg>
+        ${scanSvg}
       </button>
       <button class="setting-icon-btn" onclick="openRosterModal()">
         <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg>
@@ -78,11 +83,24 @@ function renderFlow() {
     </div>
   `;
 
+  // 右上のアイコン群（デフォルトは履歴と設定）
+  let rightHeaderActions = `
+    <div style="display: flex; gap: 15px;">
+      <button class="setting-icon-btn" onclick="openHistoryModal()">
+        <svg viewBox="0 0 24 24"><path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>
+      </button>
+      <button class="setting-icon-btn" onclick="openSettingModal()">
+        <svg viewBox="0 0 24 24"><path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.06-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.73,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.06,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.49-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/></svg>
+      </button>
+    </div>
+  `;
+
+  // PLAYERS画面の場合のアイコン構成
   if (flowStep === 2) {
     leftHeaderActions = `
       <div style="display: flex; gap: 15px; align-items: center;">
         <button class="setting-icon-btn" onclick="openQRScannerModal()">
-          <svg viewBox="0 0 24 24"><path d="M3 3h8v8H3V3zm2 2v4h4V5H5zm8-2h8v8h-8V3zm2 2v4h4V5h-4zM3 13h8v8H3v-8zm2 2v4h4v-4H5zm13-2h3v2h-3v-2zm-3 0h2v2h-2v-2zm3 3h3v2h-3v-2zm-3 0h2v4h-2v-4zm3 3h3v2h-3v-2z"/></svg>
+          ${scanSvg}
         </button>
         <button class="setting-icon-btn" onclick="openRosterModal()">
           <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg>
@@ -98,12 +116,13 @@ function renderFlow() {
         ` : ''}
       </div>
     `;
-  }
 
-  const headerActionsHtml = `
-    <div class="flow-header-actions">
-      ${leftHeaderActions}
+    // ★大改修：PLAYERS画面の時だけ、履歴ボタンの左側に「QR生成ボタン」を挿入する
+    rightHeaderActions = `
       <div style="display: flex; gap: 15px;">
+        <button class="setting-icon-btn" style="color: #10B981;" onclick="previewAndGenerateStartQR()">
+          ${qrGenSvg}
+        </button>
         <button class="setting-icon-btn" onclick="openHistoryModal()">
           <svg viewBox="0 0 24 24"><path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>
         </button>
@@ -111,6 +130,13 @@ function renderFlow() {
           <svg viewBox="0 0 24 24"><path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.06-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.73,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.06,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.49-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/></svg>
         </button>
       </div>
+    `;
+  }
+
+  const headerActionsHtml = `
+    <div class="flow-header-actions">
+      ${leftHeaderActions}
+      ${rightHeaderActions}
     </div>
   `;
 
@@ -224,11 +250,8 @@ function renderFlow() {
         </div>
       </div>
       
-      <!-- ★大改修：一番下のボタンを「QR発行(本部用)」と「NEXT」に分割配置 -->
-      <div style="display: flex; justify-content: space-between; gap: 15px; margin-top: 25px;">
-        <button class="action-btn" style="flex: 1; min-width: 0; background: #8B5CF6 !important; border-color: #8B5CF6;" onclick="previewAndGenerateStartQR()">GENERATE QR</button>
-        <button class="action-btn" style="flex: 1; min-width: 0; margin-top: 0 !important;" onclick="flowNext()">NEXT</button>
-      </div>
+      <!-- ★大改修：一番下のボタンは NEXT のみに戻し、スッキリさせる -->
+      <button class="action-btn" onclick="flowNext()">NEXT</button>
     `;
   } 
   else if (flowStep === 3) {
@@ -395,19 +418,23 @@ function previewAndGenerateStartQR() {
   let pR2Val = document.getElementById("input-pr2") ? document.getElementById("input-pr2").value.trim() || "PlayerB2" : "";
 
   let typeStr = flowIsDouble ? "ダブルス" : "シングルス";
-  let ruleStr = `${typeStr} / ${flowMaxGames}G / ${flowMaxPoints}pt`;
+  let gameStr = `${flowMaxGames}G`;
+  let ptStr = `${flowMaxPoints}pt`;
+  let deuceLimit = (flowMaxPoints === 21) ? 30 : ((flowMaxPoints === 15) ? 21 : 15);
+  let settingStr = flowHasSetting ? `デュースあり(${deuceLimit})` : "デュースなし";
+  
+  let ruleStr = `${typeStr} / ${gameStr} / ${ptStr} / ${settingStr}`;
   let leftTeamStr = tLVal ? `[${tLVal}] ` : "";
   let rightTeamStr = tRVal ? `[${tRVal}] ` : "";
   let leftPlayers = flowIsDouble ? `${pL1Val} & ${pL2Val}` : pL1Val;
   let rightPlayers = flowIsDouble ? `${pR1Val} & ${pR2Val}` : pR1Val;
 
-  let confirmMsg = `以下の情報で開始QRを発行しますか？\n\n` +
-                   `【ルール】${ruleStr}\n\n` +
-                   `【LEFT】${leftTeamStr}${leftPlayers}\n` +
-                   `【RIGHT】${rightTeamStr}${rightPlayers}`;
+  let confirmMsg = `以下の情報で本部用(開始)QRを発行しますか？\n\n` +
+                   `【ルール】\n${ruleStr}\n\n` +
+                   `【LEFT】\n${leftTeamStr}${leftPlayers}\n\n` +
+                   `【RIGHT】\n${rightTeamStr}${rightPlayers}`;
 
   if (confirm(confirmMsg)) {
-    // 承認されたら、入力中の情報をオブジェクトに組み立てて ui.js のQR生成関数に直接投げる
     let matchData = {
       flowIsDouble: flowIsDouble,
       flowMaxGames: flowMaxGames,
@@ -425,7 +452,6 @@ function previewAndGenerateStartQR() {
     }
   }
 }
-
 
 function flowNext() {
   if (flowStep === 1) {
@@ -743,6 +769,20 @@ function processScannedData(data) {
   } else {
     // 【本部からの初期データ受信時の確認ダイアログ】
     let isD = (data.flowIsDouble !== undefined) ? data.flowIsDouble : (data.d !== undefined ? data.d : true);
+    
+    // ダイアログ用にルール文字列を組み立てる
+    let typeStr = isD ? "ダブルス" : "シングルス";
+    let gameStr = (data.flowMaxGames !== undefined) ? `${data.flowMaxGames}G` : (data.g !== undefined ? `${data.g}G` : "3G");
+    let ptStr = (data.flowMaxPoints !== undefined) ? `${data.flowMaxPoints}pt` : (data.p !== undefined ? `${data.p}pt` : "15pt");
+    
+    // デュース設定と上限点の算出
+    let hasSet = (data.flowHasSetting !== undefined) ? data.flowHasSetting : (data.s !== undefined ? data.s : true);
+    let rawPt = parseInt(ptStr.replace("pt", ""));
+    let limitPt = (rawPt === 21) ? 30 : ((rawPt === 15) ? 21 : 15);
+    let setStr = hasSet ? `デュースあり(${limitPt})` : "デュースなし";
+    
+    let ruleStr = `${typeStr} / ${gameStr} / ${ptStr} / ${setStr}`;
+    
     let names = Array.isArray(data.n) ? data.n : [];
     let l1 = data.nL1 || names[0] || "PlayerA1";
     let l2 = isD ? (data.nL2 || names[1] || "PlayerA2") : "";
@@ -756,15 +796,15 @@ function processScannedData(data) {
     let rPlayers = isD ? `${r1} & ${r2}` : r1;
     
     let confirmMsg = `以下の試合データを受信しました。\nこの試合を開始（トス画面へ移動）しますか？\n\n` +
-                     `【LEFT】${lTeam}${lPlayers}\n` +
-                     `【RIGHT】${rTeam}${rPlayers}`;
+                     `【ルール】\n${ruleStr}\n\n` +
+                     `【LEFT】\n${lTeam}${lPlayers}\n\n` +
+                     `【RIGHT】\n${rTeam}${rPlayers}`;
 
-    // ★ OK が押された場合のみ代入してトス画面へ進む
     if (confirm(confirmMsg)) {
       flowIsDouble = isD;
       flowMaxGames = (data.flowMaxGames !== undefined) ? data.flowMaxGames : (data.g !== undefined ? data.g : 3);
       flowMaxPoints = (data.flowMaxPoints !== undefined) ? data.flowMaxPoints : (data.p !== undefined ? data.p : 15);
-      flowHasSetting = (data.flowHasSetting !== undefined) ? data.flowHasSetting : (data.s !== undefined ? data.s : true);
+      flowHasSetting = hasSet;
       flowHasCourtSelect = (data.flowHasCourtSelect !== undefined) ? data.flowHasCourtSelect : (data.hc !== undefined ? data.hc : true);
       
       txtTL = data.tL || "";
@@ -777,11 +817,10 @@ function processScannedData(data) {
       if (flowHasCourtSelect) {
         flowStep = 3;
       } else {
-        flowStep = 1; // コート選択なしは通常あり得ないが安全のため
+        flowStep = 1; 
       }
       renderFlow();
     } else {
-      // CANCEL された場合は何事もなかったかのように元の画面を描画し直す
       renderFlow();
     }
   }
