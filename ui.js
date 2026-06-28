@@ -203,6 +203,7 @@ function openQRScannerModal() {
   const wrapper = document.getElementById('qr-reader-wrapper');
   const spinner = document.getElementById('qr-loading-spinner');
   const dotsContainer = document.getElementById('qr-progress-dots');
+  const missingNumEl = document.getElementById('qr-missing-numbers'); // ★追加
   
   if (!overlay || !wrapper) return;
   
@@ -212,6 +213,10 @@ function openQRScannerModal() {
   if (dotsContainer) {
     dotsContainer.innerHTML = '';
     dotsContainer.style.flexWrap = 'wrap'; 
+  }
+  
+  if (missingNumEl) {
+    missingNumEl.innerText = ''; // ★追加：開くたびにテキストをリセット
   }
   
   wrapper.innerHTML = `<div id="qr-reader" style="width: 100%; min-height: 250px; background-color: #000; border: 1px solid #333; border-radius: 8px;"></div>`;
@@ -264,8 +269,35 @@ function openQRScannerModal() {
           if (targetDot) targetDot.style.backgroundColor = '#10B981';
         }
 
+        // ★追加：未取得のフレーム番号の割り出しと25文字省略ロジック
+        if (missingNumEl) {
+          let missingNumbers = [];
+          for (let i = 0; i < totalChunksExpected; i++) {
+            if (!scannedChunks[i]) {
+              missingNumbers.push(i + 1);
+            }
+          }
+          
+          let missingText = "";
+          if (missingNumbers.length > 0) {
+            let tempStr = "";
+            for (let i = 0; i < missingNumbers.length; i++) {
+              let appendStr = (i === 0) ? String(missingNumbers[i]) : ", " + missingNumbers[i];
+              if (tempStr.length + appendStr.length > 25) {
+                tempStr += "...";
+                break;
+              }
+              tempStr += appendStr;
+            }
+            missingText = tempStr;
+          }
+          missingNumEl.innerText = missingText; 
+        }
+
         const collectedCount = scannedChunks.filter(Boolean).length;
         if (collectedCount === totalChunksExpected) {
+          
+          if (missingNumEl) missingNumEl.innerText = ""; // ★追加：全て揃ったら空にする
           
           const stopCameraAndProcess = async () => {
             if (html5QrCode) {
@@ -426,22 +458,19 @@ function openQROutputModal(index) {
     qrContainer.style.cssText = "width: 80vw; height: 80vw; max-width: 280px; max-height: 280px; background-color: #ffffff; border-radius: 12px; padding: 15px; box-sizing: border-box; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; overflow: hidden; position: relative; border: 10px solid #1C1C1E; transition: max-width 0.3s, max-height 0.3s;";
     
     let canvas = document.createElement('canvas');
-    // ★追加：opacityのtransitionを設定し、パッと消えて0.3秒後にパッと現れるようにする
     canvas.style.cssText = "width: 100% !important; height: 100% !important; max-width: 100% !important; max-height: 100% !important; object-fit: contain; display: block; cursor: pointer; transition: opacity 0.1s;";
     
     let isExpanded = false;
     let isAnimating = false;
     canvas.onclick = function(e) {
-      e.stopPropagation(); // 背景の「閉じる」イベントへの伝播を止める
-      if (isAnimating) return; // アニメーション中は連打を防止
+      e.stopPropagation(); 
+      if (isAnimating) return; 
       isAnimating = true;
       isExpanded = !isExpanded;
       
-      // 1. タイマー停止＆Canvas非表示
       clearInterval(qrAnimationTimer);
       canvas.style.opacity = "0";
 
-      // 2. 枠のサイズ変更（CSS transitionでヌルッと動く）
       if (isExpanded) {
         qrContainer.style.maxWidth = "80vh";
         qrContainer.style.maxHeight = "80vh";
@@ -450,9 +479,8 @@ function openQROutputModal(index) {
         qrContainer.style.maxHeight = "280px";
       }
 
-      // 3. 0.3秒待機後に再開
       setTimeout(() => {
-        drawNextQR(); // 枠のサイズ変更完了後に描画し直すことで、解像度を最適化
+        drawNextQR(); 
         canvas.style.opacity = "1";
         if (totalChunks > 1) {
           qrAnimationTimer = setInterval(drawNextQR, 100);
@@ -489,7 +517,7 @@ function openQROutputModal(index) {
       QRCode.toCanvas(canvas, payload, {
         margin: 1,
         version: 4, 
-        width: 800, // ★内部解像度を上げて大画面でもぼやけないように設定
+        width: 800, 
         color: { dark: "#000000", light: "#ffffff" },
         errorCorrectionLevel: 'L'
       }, function (error) {
