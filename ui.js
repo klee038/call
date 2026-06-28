@@ -425,7 +425,8 @@ function openQROutputModal(index) {
     }
     let fullBase64String = btoa(binaryString);
     
-    const chunkSize = 60; 
+    // ★改善1：chunkSizeを40に減らし、QRの目を粗く（読み取りやすく）する
+    const chunkSize = 40; 
     let chunks = [];
     for (let i = 0; i < fullBase64String.length; i += chunkSize) {
       chunks.push(fullBase64String.substring(i, i + chunkSize));
@@ -435,7 +436,8 @@ function openQROutputModal(index) {
     
     overlay.innerHTML = ""; 
     let qrContainer = document.createElement('div');
-    qrContainer.style.cssText = "width: 80vw; height: 80vw; max-width: 400px; max-height: 400px; background-color: #ffffff; border-radius: 12px; padding: 15px; box-sizing: border-box; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; overflow: hidden; position: relative;";
+    // ★改善3：サイズ縮小と外枠（border）の追加によるマクロレンズ・白飛び対策
+    qrContainer.style.cssText = "width: 80vw; height: 80vw; max-width: 280px; max-height: 280px; background-color: #ffffff; border-radius: 12px; padding: 15px; box-sizing: border-box; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; overflow: hidden; position: relative; border: 10px solid #1C1C1E;";
     
     let canvas = document.createElement('canvas');
     canvas.style.cssText = "width: 100% !important; height: 100% !important; max-width: 100% !important; max-height: 100% !important; object-fit: contain; display: block;";
@@ -448,26 +450,45 @@ function openQROutputModal(index) {
     overlay.appendChild(qrContainer);
     overlay.style.display = 'flex';
 
-    let currentDrawIndex = 0;
+    // ★改善2：同調を防ぐシャッフル再生の導入
+    let indices = Array.from({length: totalChunks}, (_, i) => i);
+    const shuffleArray = (array) => {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+    };
+
+    let currentStep = 0;
     const drawNextQR = () => {
-      let payload = `QRX:${currentDrawIndex + 1}/${totalChunks}:${chunks[currentDrawIndex]}`;
+      // 1周するごとに再生順をシャッフルする
+      if (currentStep === 0) {
+        shuffleArray(indices);
+      }
+      
+      let chunkIndex = indices[currentStep];
+      let payload = `QRX:${chunkIndex + 1}/${totalChunks}:${chunks[chunkIndex]}`;
       
       QRCode.toCanvas(canvas, payload, {
         margin: 1,
-        version: 5,
+        // ★改善1：version指定を外して自動最適化に任せる
         color: { dark: "#000000", light: "#ffffff" },
         errorCorrectionLevel: 'L'
       }, function (error) {
         if (error) console.error("QR描画エラー:", error);
       });
       
-      counterLabel.innerText = `${currentDrawIndex + 1} / ${totalChunks}`;
-      currentDrawIndex = (currentDrawIndex + 1) % totalChunks;
+      counterLabel.innerText = `${chunkIndex + 1} / ${totalChunks}`;
+      
+      currentStep++;
+      if (currentStep >= totalChunks) {
+        currentStep = 0;
+      }
     };
 
     drawNextQR();
     if (totalChunks > 1) {
-      qrAnimationTimer = setInterval(drawNextQR, 150); 
+      qrAnimationTimer = setInterval(drawNextQR, 120); 
     }
     
   } catch (e) {
@@ -534,7 +555,8 @@ function openCurrentMatchQRModal() {
     }
     let fullBase64String = btoa(binaryString);
     
-    const chunkSize = 60; 
+    // ★改善1：chunkSizeを40に減らす
+    const chunkSize = 40; 
     let chunks = [];
     for (let i = 0; i < fullBase64String.length; i += chunkSize) {
       chunks.push(fullBase64String.substring(i, i + chunkSize));
@@ -544,7 +566,8 @@ function openCurrentMatchQRModal() {
     
     overlay.innerHTML = ""; 
     let qrContainer = document.createElement('div');
-    qrContainer.style.cssText = "width: 80vw; height: 80vw; max-width: 400px; max-height: 400px; background-color: #ffffff; border-radius: 12px; padding: 15px; box-sizing: border-box; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; overflow: hidden; position: relative;";
+    // ★改善3：サイズ縮小と外枠（border）の追加
+    qrContainer.style.cssText = "width: 80vw; height: 80vw; max-width: 280px; max-height: 280px; background-color: #ffffff; border-radius: 12px; padding: 15px; box-sizing: border-box; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; overflow: hidden; position: relative; border: 10px solid #1C1C1E;";
     
     let canvas = document.createElement('canvas');
     canvas.style.cssText = "width: 100% !important; height: 100% !important; max-width: 100% !important; max-height: 100% !important; object-fit: contain; display: block;";
@@ -557,26 +580,44 @@ function openCurrentMatchQRModal() {
     overlay.appendChild(qrContainer);
     overlay.style.display = 'flex';
 
-    let currentDrawIndex = 0;
+    // ★改善2：シャッフル再生の導入
+    let indices = Array.from({length: totalChunks}, (_, i) => i);
+    const shuffleArray = (array) => {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+    };
+
+    let currentStep = 0;
     const drawNextQR = () => {
-      let payload = `QRX:${currentDrawIndex + 1}/${totalChunks}:${chunks[currentDrawIndex]}`;
+      if (currentStep === 0) {
+        shuffleArray(indices);
+      }
+      
+      let chunkIndex = indices[currentStep];
+      let payload = `QRX:${chunkIndex + 1}/${totalChunks}:${chunks[chunkIndex]}`;
       
       QRCode.toCanvas(canvas, payload, {
         margin: 1,
-        version: 5,
+        // ★改善1：version指定を外して自動最適化
         color: { dark: "#000000", light: "#ffffff" },
         errorCorrectionLevel: 'L'
       }, function (error) {
         if (error) console.error("QR描画エラー:", error);
       });
       
-      counterLabel.innerText = `${currentDrawIndex + 1} / ${totalChunks}`;
-      currentDrawIndex = (currentDrawIndex + 1) % totalChunks;
+      counterLabel.innerText = `${chunkIndex + 1} / ${totalChunks}`;
+      
+      currentStep++;
+      if (currentStep >= totalChunks) {
+        currentStep = 0;
+      }
     };
 
     drawNextQR();
     if (totalChunks > 1) {
-      qrAnimationTimer = setInterval(drawNextQR, 150); 
+      qrAnimationTimer = setInterval(drawNextQR, 120); 
     }
     
   } catch (e) {
@@ -608,7 +649,8 @@ function generateStartMatchQR(matchData) {
     }
     let fullBase64String = btoa(binaryString);
     
-    const chunkSize = 60; 
+    // ★改善1：chunkSizeを40に減らす
+    const chunkSize = 40; 
     let chunks = [];
     for (let i = 0; i < fullBase64String.length; i += chunkSize) {
       chunks.push(fullBase64String.substring(i, i + chunkSize));
@@ -618,7 +660,8 @@ function generateStartMatchQR(matchData) {
     
     overlay.innerHTML = ""; 
     let qrContainer = document.createElement('div');
-    qrContainer.style.cssText = "width: 80vw; height: 80vw; max-width: 400px; max-height: 400px; background-color: #ffffff; border-radius: 12px; padding: 15px; box-sizing: border-box; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; overflow: hidden; position: relative;";
+    // ★改善3：サイズ縮小と外枠（border）の追加
+    qrContainer.style.cssText = "width: 80vw; height: 80vw; max-width: 280px; max-height: 280px; background-color: #ffffff; border-radius: 12px; padding: 15px; box-sizing: border-box; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; overflow: hidden; position: relative; border: 10px solid #1C1C1E;";
     
     let canvas = document.createElement('canvas');
     canvas.style.cssText = "width: 100% !important; height: 100% !important; max-width: 100% !important; max-height: 100% !important; object-fit: contain; display: block;";
@@ -631,26 +674,44 @@ function generateStartMatchQR(matchData) {
     overlay.appendChild(qrContainer);
     overlay.style.display = 'flex';
 
-    let currentDrawIndex = 0;
+    // ★改善2：シャッフル再生の導入
+    let indices = Array.from({length: totalChunks}, (_, i) => i);
+    const shuffleArray = (array) => {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+    };
+
+    let currentStep = 0;
     const drawNextQR = () => {
-      let payload = `QRX:${currentDrawIndex + 1}/${totalChunks}:${chunks[currentDrawIndex]}`;
+      if (currentStep === 0) {
+        shuffleArray(indices);
+      }
+      
+      let chunkIndex = indices[currentStep];
+      let payload = `QRX:${chunkIndex + 1}/${totalChunks}:${chunks[chunkIndex]}`;
       
       QRCode.toCanvas(canvas, payload, {
         margin: 1,
-        version: 5,
+        // ★改善1：version指定を外して自動最適化
         color: { dark: "#000000", light: "#ffffff" },
         errorCorrectionLevel: 'L'
       }, function (error) {
         if (error) console.error("QR描画エラー:", error);
       });
       
-      counterLabel.innerText = `${currentDrawIndex + 1} / ${totalChunks}`;
-      currentDrawIndex = (currentDrawIndex + 1) % totalChunks;
+      counterLabel.innerText = `${chunkIndex + 1} / ${totalChunks}`;
+      
+      currentStep++;
+      if (currentStep >= totalChunks) {
+        currentStep = 0;
+      }
     };
 
     drawNextQR();
     if (totalChunks > 1) {
-      qrAnimationTimer = setInterval(drawNextQR, 150); 
+      qrAnimationTimer = setInterval(drawNextQR, 120); 
     }
     
   } catch (e) {
