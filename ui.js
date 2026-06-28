@@ -81,17 +81,21 @@ function syncBoardDOM() {
     }
   }
 
+  // ★修正：新設した「QR出力ボタン(btn-qr-out)」もTOSS画面等では隠す処理の対象に含める
+  let btnQrOut = document.getElementById("btn-qr-out");
   let btnRecorder = document.getElementById("btn-recorder");
   let btnClose = document.getElementById("btn-close");
 
   if (isSelectingRoles) {
     if (btnUndo) btnUndo.classList.add("hidden-by-overlay");
     if (btnRedo) btnRedo.classList.add("hidden-by-overlay");
+    if (btnQrOut) btnQrOut.classList.add("hidden-by-overlay");
     if (btnRecorder) btnRecorder.classList.add("hidden-by-overlay");
     if (btnClose) btnClose.classList.add("hidden-by-overlay");
   } else {
     if (btnUndo) btnUndo.classList.remove("hidden-by-overlay");
     if (btnRedo) btnRedo.classList.remove("hidden-by-overlay");
+    if (btnQrOut) btnQrOut.classList.remove("hidden-by-overlay");
     if (btnRecorder) btnRecorder.classList.remove("hidden-by-overlay");
     if (btnClose) btnClose.classList.remove("hidden-by-overlay");
   }
@@ -336,7 +340,7 @@ async function closeQRScannerModal() {
 }
 
 /**
- * 【出力側】ダイレクトQR表示（履歴からの引き継ぎ用）
+ * 【出力側】ダイレクトQR表示（履歴一覧から一発表示）
  */
 function openQROutputModal(index) {
   const overlay = document.getElementById('qr-direct-overlay');
@@ -419,6 +423,117 @@ function openQROutputModal(index) {
     
   } catch (e) {
     alert("データの圧縮またはQRコードの生成に失敗しました。");
+    console.error(e);
+  }
+}
+
+/**
+ * 【出力側】★新設：得点板から「今の試合状態」を直接QR化して表示する
+ */
+function openCurrentMatchQRModal() {
+  const overlay = document.getElementById('qr-direct-overlay');
+  if (!overlay) return;
+  
+  if (qrAnimationTimer) {
+    clearInterval(qrAnimationTimer);
+    qrAnimationTimer = null;
+  }
+  
+  try {
+    // 履歴からではなく、今まさに動いているアプリのグローバル変数をかき集めて state オブジェクトを作る
+    let currentState = {
+      flowIsDouble: flowIsDouble,
+      flowMaxGames: flowMaxGames,
+      flowMaxPoints: flowMaxPoints,
+      flowHasCE: flowHasCE,
+      flowHasInterval: flowHasInterval,
+      flowHasSetting: flowHasSetting,
+      flowHasCourtSelect: flowHasCourtSelect,
+      sL: sL, sR: sR, gL: gL, gR: gR, srvL: srvL,
+      tL: tL, tR: tR,
+      nL1: nL1, nL2: nL2, nR1: nR1, nR2: nR2,
+      pL1IsRight: pL1IsRight, pR1IsRight: pR1IsRight,
+      isOver: isOver, needsOverlay: needsOverlay,
+      ivDoneInThisGame: ivDoneInThisGame,
+      isSelectingRoles: isSelectingRoles,
+      overlayMsg: overlayMsg, resultDetails: resultDetails, ceNotice: ceNotice,
+      annL: annL, annR: annR,
+      shownCountL: shownCountL, shownCountR: shownCountR,
+      justAfterInterval: justAfterInterval,
+      initialTL: initialTL, initialTR: initialTR,
+      initialNL1: initialNL1, initialNL2: initialNL2,
+      initialNR1: initialNR1, initialNR2: initialNR2,
+      matchScoreHistory: matchScoreHistory,
+      matchDefaultRole: matchDefaultRole,
+      matchTimeline: matchTimeline,
+      recorderData: (typeof Recorder !== 'undefined') ? Recorder.exportData() : null
+    };
+
+    // 戻るボタンの履歴（hist）は、最新の1件だけを持たせる（軽量化と戻る機能の両立）
+    if (hist && hist.length > 0) {
+      currentState.hist = [hist[hist.length - 1]];
+    } else {
+      currentState.hist = [];
+    }
+    currentState.redoStack = [];
+
+    let jsonString = JSON.stringify(currentState);
+    let uint8Array = new TextEncoder().encode(jsonString);
+    let compressedArray = pako.deflate(uint8Array);
+    
+    let binaryString = "";
+    for (let i = 0; i < compressedArray.length; i++) {
+        binaryString += String.fromCharCode(compressedArray[i]);
+    }
+    let fullBase64String = btoa(binaryString);
+    
+    const chunkSize = 60; 
+    let chunks = [];
+    for (let i = 0; i < fullBase64String.length; i += chunkSize) {
+      chunks.push(fullBase64String.substring(i, i + chunkSize));
+    }
+    
+    const totalChunks = chunks.length;
+    
+    overlay.innerHTML = ""; 
+    let qrContainer = document.createElement('div');
+    qrContainer.style.cssText = "width: 80vw; height: 80vw; max-width: 400px; max-height: 400px; background-color: #ffffff; border-radius: 12px; padding: 15px; box-sizing: border-box; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; overflow: hidden; position: relative;";
+    
+    let canvas = document.createElement('canvas');
+    canvas.style.cssText = "width: 100% !important; height: 100% !important; max-width: 100% !important; max-height: 100% !important; object-fit: contain; display: block;";
+    
+    let counterLabel = document.createElement('div');
+    counterLabel.style.cssText = "position: absolute; bottom: 5px; right: 10px; font-size: 10px; color: #999; font-family: monospace;";
+    
+    qrContainer.appendChild(canvas);
+    qrContainer.appendChild(counterLabel);
+    overlay.appendChild(qrContainer);
+    overlay.style.display = 'flex';
+
+    let currentDrawIndex = 0;
+    const drawNextQR = () => {
+      let payload = `QRX:${currentDrawIndex + 1}/${totalChunks}:${chunks[currentDrawIndex]}`;
+      
+      QRCode.toCanvas(canvas, payload, {
+        margin: 1,
+        version: 5,
+        color: { dark: "#000000", light: "#ffffff" },
+        errorCorrectionLevel: 'L'
+      }, function (error) {
+        if (error) console.error("QR描画エラー:", error);
+      });
+      
+      counterLabel.innerText = `${currentDrawIndex + 1} / ${totalChunks}`;
+      currentDrawIndex = (currentDrawIndex + 1) % totalChunks;
+    };
+
+    drawNextQR();
+    if (totalChunks > 1) {
+      qrAnimationTimer = setInterval(drawNextQR, 150); 
+    }
+    
+  } catch (e) {
+    alert("現在の試合状況のQRコード生成に失敗しました。");
     console.error(e);
   }
 }

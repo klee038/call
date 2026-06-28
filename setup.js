@@ -67,9 +67,7 @@ function renderFlow() {
 
   updateBoardFormatInfo();
 
-  // ★大改修：左上のスキャンボタンを「四隅の枠＋中央四角」の新しいスキャン用SVGに変更
   const scanSvg = `<svg viewBox="0 0 24 24"><path d="M4 4h4v2H6v2H4V4zm16 0h-4v2h2v2h2V4zM4 20h4v-2H6v-2H4v4zm16 0h-4v-2h2v-2h2v4zM9 9h6v6H9V9z"/></svg>`;
-  // ★大改修：生成用のQRアイコンSVG（元々左上にあったもの）
   const qrGenSvg = `<svg viewBox="0 0 24 24"><path d="M3 3h8v8H3V3zm2 2v4h4V5H5zm8-2h8v8h-8V3zm2 2v4h4V5h-4zM3 13h8v8H3v-8zm2 2v4h4v-4H5zm13-2h3v2h-3v-2zm-3 0h2v2h-2v-2zm3 3h3v2h-3v-2zm-3 0h2v4h-2v-4zm3 3h3v2h-3v-2z"/></svg>`;
 
   let leftHeaderActions = `
@@ -83,7 +81,6 @@ function renderFlow() {
     </div>
   `;
 
-  // 右上のアイコン群（デフォルトは履歴と設定）
   let rightHeaderActions = `
     <div style="display: flex; gap: 15px;">
       <button class="setting-icon-btn" onclick="openHistoryModal()">
@@ -95,7 +92,6 @@ function renderFlow() {
     </div>
   `;
 
-  // PLAYERS画面の場合のアイコン構成
   if (flowStep === 2) {
     leftHeaderActions = `
       <div style="display: flex; gap: 15px; align-items: center;">
@@ -117,10 +113,10 @@ function renderFlow() {
       </div>
     `;
 
-    // ★大改修：PLAYERS画面の時だけ、履歴ボタンの左側に「QR生成ボタン」を挿入する
+    // ★大改修：PLAYERS画面の右上に「QR生成ボタン」を同じ色・デザインで配置
     rightHeaderActions = `
       <div style="display: flex; gap: 15px;">
-        <button class="setting-icon-btn" style="color: #10B981;" onclick="previewAndGenerateStartQR()">
+        <button class="setting-icon-btn" onclick="previewAndGenerateStartQR()">
           ${qrGenSvg}
         </button>
         <button class="setting-icon-btn" onclick="openHistoryModal()">
@@ -250,7 +246,6 @@ function renderFlow() {
         </div>
       </div>
       
-      <!-- ★大改修：一番下のボタンは NEXT のみに戻し、スッキリさせる -->
       <button class="action-btn" onclick="flowNext()">NEXT</button>
     `;
   } 
@@ -406,9 +401,6 @@ function setIntervalOption(val) { flowHasInterval = val; renderFlow(); }
 function setSettingOpt(val) { flowHasSetting = val; renderFlow(); }
 function setCourtSelect(val) { flowHasCourtSelect = val; renderFlow(); }
 
-// =========================================
-// ★新設：送信側（本部）の確認ダイアログとQR発行処理
-// =========================================
 function previewAndGenerateStartQR() {
   let tLVal = document.getElementById("input-tl").value.trim();
   let tRVal = document.getElementById("input-tr").value.trim();
@@ -693,7 +685,7 @@ function checkScannedQRDataOnLoad() {
           setTimeout(() => { resumeMatchFromState(matchData); }, 100);
         }
       } else {
-        setTimeout(() => { applyScannedMatchData(matchData); }, 100);
+        setTimeout(() => { processScannedData(matchData); }, 100);
       }
 
     } catch (e) {
@@ -704,10 +696,6 @@ function checkScannedQRDataOnLoad() {
 }
 checkScannedQRDataOnLoad();
 
-
-// =========================================
-// ★改修：受信側（主審）の確認ダイアログとフロー振り分け
-// =========================================
 function processScannedData(data) {
   if (!data || typeof data !== 'object') {
     alert("無効なデータ形式です。");
@@ -767,15 +755,12 @@ function processScannedData(data) {
       resumeMatchFromState(data);
     }
   } else {
-    // 【本部からの初期データ受信時の確認ダイアログ】
     let isD = (data.flowIsDouble !== undefined) ? data.flowIsDouble : (data.d !== undefined ? data.d : true);
     
-    // ダイアログ用にルール文字列を組み立てる
     let typeStr = isD ? "ダブルス" : "シングルス";
     let gameStr = (data.flowMaxGames !== undefined) ? `${data.flowMaxGames}G` : (data.g !== undefined ? `${data.g}G` : "3G");
     let ptStr = (data.flowMaxPoints !== undefined) ? `${data.flowMaxPoints}pt` : (data.p !== undefined ? `${data.p}pt` : "15pt");
     
-    // デュース設定と上限点の算出
     let hasSet = (data.flowHasSetting !== undefined) ? data.flowHasSetting : (data.s !== undefined ? data.s : true);
     let rawPt = parseInt(ptStr.replace("pt", ""));
     let limitPt = (rawPt === 21) ? 30 : ((rawPt === 15) ? 21 : 15);
