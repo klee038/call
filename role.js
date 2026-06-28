@@ -111,7 +111,8 @@ function toggleRole(side) {
 }
 
 function confirmRoles() {
-  if (sL === 0 && sR === 0) {
+  // ★修正：第1ゲームの0-0の時だけ絶対原点として記憶する（2ゲーム目以降は上書きさせない）
+  if (sL === 0 && sR === 0 && gL === 0 && gR === 0) {
     let selL = pL1IsRight ? nL1 : nL2;
     let selR = pR1IsRight ? nR1 : nR2;
     if (nL1 === initialNL1) {

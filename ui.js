@@ -341,7 +341,7 @@ function openQRScannerModal() {
         html5QrCode = null;
       });
       
-  }, 300); // 300ミリ秒待機
+  }, 300);
 }
 
 /**
@@ -426,13 +426,22 @@ function openQROutputModal(index) {
     qrContainer.style.cssText = "width: 80vw; height: 80vw; max-width: 280px; max-height: 280px; background-color: #ffffff; border-radius: 12px; padding: 15px; box-sizing: border-box; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; overflow: hidden; position: relative; border: 10px solid #1C1C1E; transition: max-width 0.3s, max-height 0.3s;";
     
     let canvas = document.createElement('canvas');
-    canvas.style.cssText = "width: 100% !important; height: 100% !important; max-width: 100% !important; max-height: 100% !important; object-fit: contain; display: block; cursor: pointer;";
+    // ★追加：opacityのtransitionを設定し、パッと消えて0.3秒後にパッと現れるようにする
+    canvas.style.cssText = "width: 100% !important; height: 100% !important; max-width: 100% !important; max-height: 100% !important; object-fit: contain; display: block; cursor: pointer; transition: opacity 0.1s;";
     
-    // ★QRコード部分のみの拡大縮小イベント（背景への伝播を止める）
     let isExpanded = false;
+    let isAnimating = false;
     canvas.onclick = function(e) {
-      e.stopPropagation();
+      e.stopPropagation(); // 背景の「閉じる」イベントへの伝播を止める
+      if (isAnimating) return; // アニメーション中は連打を防止
+      isAnimating = true;
       isExpanded = !isExpanded;
+      
+      // 1. タイマー停止＆Canvas非表示
+      clearInterval(qrAnimationTimer);
+      canvas.style.opacity = "0";
+
+      // 2. 枠のサイズ変更（CSS transitionでヌルッと動く）
       if (isExpanded) {
         qrContainer.style.maxWidth = "80vh";
         qrContainer.style.maxHeight = "80vh";
@@ -440,6 +449,16 @@ function openQROutputModal(index) {
         qrContainer.style.maxWidth = "280px";
         qrContainer.style.maxHeight = "280px";
       }
+
+      // 3. 0.3秒待機後に再開
+      setTimeout(() => {
+        drawNextQR(); // 枠のサイズ変更完了後に描画し直すことで、解像度を最適化
+        canvas.style.opacity = "1";
+        if (totalChunks > 1) {
+          qrAnimationTimer = setInterval(drawNextQR, 100);
+        }
+        isAnimating = false;
+      }, 300);
     };
     
     let counterLabel = document.createElement('div');
@@ -470,6 +489,7 @@ function openQROutputModal(index) {
       QRCode.toCanvas(canvas, payload, {
         margin: 1,
         version: 4, 
+        width: 800, // ★内部解像度を上げて大画面でもぼやけないように設定
         color: { dark: "#000000", light: "#ffffff" },
         errorCorrectionLevel: 'L'
       }, function (error) {
@@ -566,13 +586,19 @@ function openCurrentMatchQRModal() {
     qrContainer.style.cssText = "width: 80vw; height: 80vw; max-width: 280px; max-height: 280px; background-color: #ffffff; border-radius: 12px; padding: 15px; box-sizing: border-box; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; overflow: hidden; position: relative; border: 10px solid #1C1C1E; transition: max-width 0.3s, max-height 0.3s;";
     
     let canvas = document.createElement('canvas');
-    canvas.style.cssText = "width: 100% !important; height: 100% !important; max-width: 100% !important; max-height: 100% !important; object-fit: contain; display: block; cursor: pointer;";
+    canvas.style.cssText = "width: 100% !important; height: 100% !important; max-width: 100% !important; max-height: 100% !important; object-fit: contain; display: block; cursor: pointer; transition: opacity 0.1s;";
     
-    // ★QRコード部分のみの拡大縮小イベント（背景への伝播を止める）
     let isExpanded = false;
+    let isAnimating = false;
     canvas.onclick = function(e) {
       e.stopPropagation();
+      if (isAnimating) return;
+      isAnimating = true;
       isExpanded = !isExpanded;
+      
+      clearInterval(qrAnimationTimer);
+      canvas.style.opacity = "0";
+
       if (isExpanded) {
         qrContainer.style.maxWidth = "80vh";
         qrContainer.style.maxHeight = "80vh";
@@ -580,6 +606,15 @@ function openCurrentMatchQRModal() {
         qrContainer.style.maxWidth = "280px";
         qrContainer.style.maxHeight = "280px";
       }
+
+      setTimeout(() => {
+        drawNextQR();
+        canvas.style.opacity = "1";
+        if (totalChunks > 1) {
+          qrAnimationTimer = setInterval(drawNextQR, 100);
+        }
+        isAnimating = false;
+      }, 300);
     };
     
     let counterLabel = document.createElement('div');
@@ -610,6 +645,7 @@ function openCurrentMatchQRModal() {
       QRCode.toCanvas(canvas, payload, {
         margin: 1,
         version: 4, 
+        width: 800,
         color: { dark: "#000000", light: "#ffffff" },
         errorCorrectionLevel: 'L'
       }, function (error) {
@@ -671,13 +707,19 @@ function generateStartMatchQR(matchData) {
     qrContainer.style.cssText = "width: 80vw; height: 80vw; max-width: 280px; max-height: 280px; background-color: #ffffff; border-radius: 12px; padding: 15px; box-sizing: border-box; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; overflow: hidden; position: relative; border: 10px solid #1C1C1E; transition: max-width 0.3s, max-height 0.3s;";
     
     let canvas = document.createElement('canvas');
-    canvas.style.cssText = "width: 100% !important; height: 100% !important; max-width: 100% !important; max-height: 100% !important; object-fit: contain; display: block; cursor: pointer;";
+    canvas.style.cssText = "width: 100% !important; height: 100% !important; max-width: 100% !important; max-height: 100% !important; object-fit: contain; display: block; cursor: pointer; transition: opacity 0.1s;";
     
-    // ★QRコード部分のみの拡大縮小イベント（背景への伝播を止める）
     let isExpanded = false;
+    let isAnimating = false;
     canvas.onclick = function(e) {
       e.stopPropagation();
+      if (isAnimating) return;
+      isAnimating = true;
       isExpanded = !isExpanded;
+      
+      clearInterval(qrAnimationTimer);
+      canvas.style.opacity = "0";
+
       if (isExpanded) {
         qrContainer.style.maxWidth = "80vh";
         qrContainer.style.maxHeight = "80vh";
@@ -685,6 +727,15 @@ function generateStartMatchQR(matchData) {
         qrContainer.style.maxWidth = "280px";
         qrContainer.style.maxHeight = "280px";
       }
+
+      setTimeout(() => {
+        drawNextQR();
+        canvas.style.opacity = "1";
+        if (totalChunks > 1) {
+          qrAnimationTimer = setInterval(drawNextQR, 100);
+        }
+        isAnimating = false;
+      }, 300);
     };
     
     let counterLabel = document.createElement('div');
@@ -715,6 +766,7 @@ function generateStartMatchQR(matchData) {
       QRCode.toCanvas(canvas, payload, {
         margin: 1,
         version: 4, 
+        width: 800,
         color: { dark: "#000000", light: "#ffffff" },
         errorCorrectionLevel: 'L'
       }, function (error) {
