@@ -81,7 +81,6 @@ function syncBoardDOM() {
     }
   }
 
-  // ★修正：新設した「QR出力ボタン(btn-qr-out)」もTOSS画面等では隠す処理の対象に含める
   let btnQrOut = document.getElementById("btn-qr-out");
   let btnRecorder = document.getElementById("btn-recorder");
   let btnClose = document.getElementById("btn-close");
@@ -191,7 +190,6 @@ function syncBoardDOM() {
 // =========================================
 
 let html5QrCode = null;
-let isCameraPaused = false;
 let qrAnimationTimer = null; 
 
 let scannedChunks = [];
@@ -225,12 +223,7 @@ function openQRScannerModal() {
     return;
   }
 
-  if (html5QrCode && isCameraPaused) {
-    html5QrCode.resume();
-    isCameraPaused = false;
-    return;
-  }
-
+  // ★修正：一時停止等の古いロジックを全削除し、毎回必ず「完全新規（new）」で作り直す
   html5QrCode = new Html5Qrcode("qr-reader");
 
   const onScanSuccess = async (decodedText, decodedResult) => {
@@ -264,44 +257,55 @@ function openQRScannerModal() {
       const collectedCount = scannedChunks.filter(Boolean).length;
       if (collectedCount === totalChunksExpected) {
         
-        if (html5QrCode) {
-          try {
-            await html5QrCode.stop();
-            html5QrCode.clear();
-          } catch(e) {} finally { html5QrCode = null; }
-        }
-        
-        if (reader) reader.style.display = 'none';
-        if (spinner) spinner.style.display = 'flex';
-
-        setTimeout(() => {
-          try {
-            let fullBase64 = scannedChunks.join('');
-            let binaryString = atob(fullBase64);
-            let charArray = binaryString.split('').map(c => c.charCodeAt(0));
-            let uint8Array = new Uint8Array(charArray);
-
-            let decompressedUint8 = pako.inflate(uint8Array);
-            let decompressedText = new TextDecoder().decode(decompressedUint8);
-            let matchData = JSON.parse(decompressedText);
-            
-            if (typeof processScannedData === 'function') {
-              processScannedData(matchData);
-            } else {
-              alert("復元用の関数が見つかりません。");
+        // ★修正：読み取り成功時も、画面を隠す前に確実にカメラを完全停止・破棄する
+        const stopCameraAndProcess = async () => {
+          if (html5QrCode) {
+            try {
+              if (html5QrCode.isScanning) {
+                await html5QrCode.stop();
+              }
+              html5QrCode.clear();
+            } catch(e) {
+              console.warn("スキャン完了時のカメラ停止エラー", e);
+            } finally { 
+              html5QrCode = null; 
             }
-            
-            overlay.style.display = 'none';
-            if (reader) reader.style.display = 'block';
-            if (spinner) spinner.style.display = 'none';
-
-          } catch (e) {
-            alert("QRコードの結合・解読に失敗しました。");
-            console.error(e);
-            if (spinner) spinner.style.display = 'none';
-            if (reader) reader.style.display = 'block';
           }
-        }, 50);
+          
+          if (reader) reader.style.display = 'none';
+          if (spinner) spinner.style.display = 'flex';
+
+          setTimeout(() => {
+            try {
+              let fullBase64 = scannedChunks.join('');
+              let binaryString = atob(fullBase64);
+              let charArray = binaryString.split('').map(c => c.charCodeAt(0));
+              let uint8Array = new Uint8Array(charArray);
+
+              let decompressedUint8 = pako.inflate(uint8Array);
+              let decompressedText = new TextDecoder().decode(decompressedUint8);
+              let matchData = JSON.parse(decompressedText);
+              
+              if (typeof processScannedData === 'function') {
+                processScannedData(matchData);
+              } else {
+                alert("復元用の関数が見つかりません。");
+              }
+              
+              overlay.style.display = 'none';
+              if (reader) reader.style.display = 'block';
+              if (spinner) spinner.style.display = 'none';
+
+            } catch (e) {
+              alert("QRコードの結合・解読に失敗しました。");
+              console.error(e);
+              if (spinner) spinner.style.display = 'none';
+              if (reader) reader.style.display = 'block';
+            }
+          }, 50);
+        };
+        
+        stopCameraAndProcess();
       }
 
     } catch (e) {
@@ -323,20 +327,36 @@ function openQRScannerModal() {
     });
 }
 
+/**
+ * ★修正：モーダルを閉じる際のカメラの「完全破棄（null化）」
+ */
 async function closeQRScannerModal() {
   const overlay = document.getElementById('qr-scanner-overlay');
   if (!overlay) return;
-  overlay.style.display = 'none';
+  
+  // 1. 画面(DOM)を消す前に、確実にカメラの停止と初期化を行う
   if (html5QrCode) {
     try {
-      await html5QrCode.stop();
+      if (html5QrCode.isScanning) {
+        await html5QrCode.stop();
+      }
       html5QrCode.clear();
     } catch (err) {
-      console.log("カメラ停止エラー", err);
+      console.warn("カメラ停止エラー", err);
     } finally {
+      // 2. ブラウザに一切の未練を残さず変数を完全に空(null)にする
       html5QrCode = null;
     }
   }
+  
+  // 3. カメラが完全に死んだことを確認してから画面を隠す
+  overlay.style.display = 'none';
+  
+  // 次回開くときのためにUIの状態をリセット
+  const reader = document.getElementById('qr-reader');
+  const spinner = document.getElementById('qr-loading-spinner');
+  if (reader) reader.style.display = 'block';
+  if (spinner) spinner.style.display = 'none';
 }
 
 /**
@@ -428,7 +448,7 @@ function openQROutputModal(index) {
 }
 
 /**
- * 【出力側】★新設：得点板から「今の試合状態」を直接QR化して表示する
+ * 【出力側】得点板から「今の試合状態」を直接QR化して表示する
  */
 function openCurrentMatchQRModal() {
   const overlay = document.getElementById('qr-direct-overlay');
@@ -440,7 +460,6 @@ function openCurrentMatchQRModal() {
   }
   
   try {
-    // 履歴からではなく、今まさに動いているアプリのグローバル変数をかき集めて state オブジェクトを作る
     let currentState = {
       flowIsDouble: flowIsDouble,
       flowMaxGames: flowMaxGames,
@@ -469,7 +488,6 @@ function openCurrentMatchQRModal() {
       recorderData: (typeof Recorder !== 'undefined') ? Recorder.exportData() : null
     };
 
-    // 戻るボタンの履歴（hist）は、最新の1件だけを持たせる（軽量化と戻る機能の両立）
     if (hist && hist.length > 0) {
       currentState.hist = [hist[hist.length - 1]];
     } else {
@@ -539,7 +557,7 @@ function openCurrentMatchQRModal() {
 }
 
 /**
- * 【出力側】★新設：本部からの初期データを送信するためのQR表示
+ * 【出力側】本部からの初期データを送信するためのQR表示
  */
 function generateStartMatchQR(matchData) {
   const overlay = document.getElementById('qr-direct-overlay');
