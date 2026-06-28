@@ -207,7 +207,6 @@ function openQRScannerModal() {
   scannedChunks = [];
   totalChunksExpected = 0;
   
-  // ★修正：丸が潰れず、端まで行ったら折り返すように flex-wrap を設定
   if (dotsContainer) {
     dotsContainer.innerHTML = '';
     dotsContainer.style.flexWrap = 'wrap'; 
@@ -246,7 +245,6 @@ function openQRScannerModal() {
       if (totalChunksExpected === 0) {
         totalChunksExpected = total;
         if (dotsContainer) {
-          // ★修正：丸のサイズを小さめにし、flex-shrink: 0 で絶対に潰れないようにする
           dotsContainer.innerHTML = Array.from({length: total}, (_, i) => 
             `<div id="qr-dot-${i}" style="width: 8px; height: 8px; border-radius: 50%; background-color: rgba(255,255,255,0.15); flex-shrink: 0;"></div>`
           ).join('');
@@ -338,7 +336,7 @@ async function closeQRScannerModal() {
 }
 
 /**
- * 【出力側】ダイレクトQR表示（アニメーションQR方式：バージョン固定超低密度版）
+ * 【出力側】ダイレクトQR表示（アニメーションQR方式：高画質・枠いっぱい版）
  */
 function openQROutputModal(index) {
   const overlay = document.getElementById('qr-direct-overlay');
@@ -374,7 +372,6 @@ function openQROutputModal(index) {
     }
     let fullBase64String = btoa(binaryString);
     
-    // ★大改修：バージョン5（粗いマス目）に確実に収めるため、チャンクを60文字に極小化
     const chunkSize = 60; 
     let chunks = [];
     for (let i = 0; i < fullBase64String.length; i += chunkSize) {
@@ -385,7 +382,8 @@ function openQROutputModal(index) {
     
     overlay.innerHTML = ""; 
     let qrContainer = document.createElement('div');
-    qrContainer.style.cssText = "width: 80vw; height: 80vw; max-width: 400px; max-height: 400px; background-color: #ffffff; border-radius: 12px; padding: 15px; box-sizing: border-box; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; overflow: hidden; position: relative;";
+    // ★大修正：余白(padding)をギリギリまで削り、中身をパツパツに表示させる
+    qrContainer.style.cssText = "width: 80vw; height: 80vw; max-width: 400px; max-height: 400px; background-color: #ffffff; border-radius: 12px; padding: 5px; box-sizing: border-box; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; overflow: hidden; position: relative;";
     
     let canvas = document.createElement('canvas');
     canvas.style.cssText = "width: 100% !important; height: 100% !important; max-width: 100% !important; max-height: 100% !important; object-fit: contain; display: block;";
@@ -402,10 +400,11 @@ function openQROutputModal(index) {
     const drawNextQR = () => {
       let payload = `QRX:${currentDrawIndex + 1}/${totalChunks}:${chunks[currentDrawIndex]}`;
       
-      // ★大改修：バージョンを『5』に固定し、常に粗いマス目で生成させる
+      // ★大修正：scale(1ドットのピクセル数)を極限まで大きくし、生成する画像を超高画質にする
       QRCode.toCanvas(canvas, payload, {
         margin: 1,
         version: 5,
+        scale: 20, // これによりどんなに大きく引き伸ばしても絶対にボヤけない
         color: { dark: "#000000", light: "#ffffff" },
         errorCorrectionLevel: 'L'
       }, function (error) {
@@ -416,9 +415,9 @@ function openQROutputModal(index) {
       currentDrawIndex = (currentDrawIndex + 1) % totalChunks;
     };
 
-    // ★大改修：切り替え速度を0.15秒に高速化（マシンガンスキャン）
     drawNextQR();
     if (totalChunks > 1) {
+      // スピード設定 80ms に合わせてあります
       qrAnimationTimer = setInterval(drawNextQR, 80); 
     }
     
