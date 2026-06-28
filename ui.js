@@ -330,9 +330,16 @@ function openQRScannerModal() {
     };
 
     const cameraConfig = { facingMode: "environment" };
+    
+    // ★修正：オートマクロ対応（レスポンシブなqrboxとアスペクト比の固定）
     const config = { 
       fps: 15,
-      qrbox: { width: 250, height: 250 } 
+      aspectRatio: 1.0,
+      qrbox: function(viewfinderWidth, viewfinderHeight) {
+        let minEdgeSize = Math.min(viewfinderWidth, viewfinderHeight);
+        let size = Math.floor(minEdgeSize * 0.75);
+        return { width: size, height: size };
+      }
     };
 
     html5QrCode.start(cameraConfig, config, onScanSuccess)
