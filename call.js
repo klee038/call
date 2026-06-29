@@ -94,9 +94,84 @@ function syncVolumeCallカンペ() {
       return;
   }
 
+  // ★大改修：0-0（ゲーム開始時）のコール生成ロジック
   if (sL === 0 && sR === 0 && !isOver && !needsOverlay && !justAfterInterval) {
-    document.getElementById("board-call-en").innerHTML = "Love All; Play.";
-    document.getElementById("board-call-kana").innerHTML = "ラブオール；プレイ";
+    let callEn = "";
+    let callKana = "";
+    let currentGame = gL + gR + 1;
+    
+    // ゲーム数の冠詞を判定
+    let gamePrefixEn = "";
+    let gamePrefixKana = "";
+    if (currentGame > 1) {
+        if (currentGame === flowMaxGames) {
+            gamePrefixEn = "Final game, ";
+            gamePrefixKana = "ファイナルゲーム、";
+        } else if (currentGame === 2) {
+            gamePrefixEn = "Second game, ";
+            gamePrefixKana = "セカンドゲーム、";
+        } else if (currentGame === 3) {
+            gamePrefixEn = "Third game, ";
+            gamePrefixKana = "サードゲーム、";
+        } else if (currentGame === 4) {
+            gamePrefixEn = "Fourth game, ";
+            gamePrefixKana = "フォースゲーム、";
+        }
+    }
+
+    // 第1ゲームかつ公式戦モードの場合のみロングコールを生成
+    if (currentGame === 1 && typeof flowIsOfficialCall !== 'undefined' && flowIsOfficialCall) {
+        // 主審から見て右(Right)と左(Left)のチームを特定（表示上のtR/tLをそのまま使うのが確実）
+        let rightTeamName = tR || "";
+        let leftTeamName = tL || "";
+        
+        let rightPlayersEn = flowIsDouble ? `${nR1} and ${nR2}` : nR1;
+        let rightPlayersKana = flowIsDouble ? `${nR1} アンド ${nR2}` : nR1;
+        let leftPlayersEn = flowIsDouble ? `${nL1} and ${nL2}` : nL1;
+        let leftPlayersKana = flowIsDouble ? `${nL1} アンド ${nL2}` : nL1;
+        
+        let rightTeamEn = rightTeamName ? `, ${rightTeamName}` : "";
+        let rightTeamKana = rightTeamName ? `、${rightTeamName}` : "";
+        let leftTeamEn = leftTeamName ? `, ${leftTeamName}` : "";
+        let leftTeamKana = leftTeamName ? `、${leftTeamName}` : "";
+
+        // サーバー・レシーバーの特定
+        let serverName = "";
+        let receiverName = "";
+        if (!flowIsDouble) {
+            serverName = srvL ? nL1 : nR1;
+            receiverName = srvL ? nR1 : nL1;
+        } else {
+            // ダブルスの場合は初期に選択されたプレイヤー（絶対原点）を参照する
+            let initialLPlayer = matchDefaultRole.initialLeftTeamSelectedPlayer || (pL1IsRight ? nL1 : nL2);
+            let initialRPlayer = matchDefaultRole.initialRightTeamSelectedPlayer || (pR1IsRight ? nR1 : nR2);
+            if (srvL) {
+                serverName = initialLPlayer;
+                receiverName = initialRPlayer;
+            } else {
+                serverName = initialRPlayer;
+                receiverName = initialLPlayer;
+            }
+        }
+
+        let serveCallEn = flowIsDouble ? `${serverName} to serve to ${receiverName}` : `${serverName} to serve`;
+        let serveCallKana = flowIsDouble ? `${serverName} トゥサーブ トゥ ${receiverName}` : `${serverName} トゥサーブ`;
+
+        callEn = `Ladies and Gentlemen; on my right, ${rightPlayersEn}${rightTeamEn}, and on my left, ${leftPlayersEn}${leftTeamEn}.<br>${serveCallEn}; Love All; Play.`;
+        callKana = `レイディーズ アンド ジェントルメン、オンマイライト、${rightPlayersKana}${rightTeamKana}、アンド オンマイレフト、${leftPlayersKana}${leftTeamKana}。<br>${serveCallKana}、ラブオール；プレイ`;
+    } else {
+        // 簡易版、または第2ゲーム以降のショートコール
+        if (gamePrefixEn !== "") {
+            callEn = `${gamePrefixEn}Love All; Play.`;
+            callKana = `${gamePrefixKana}ラブオール；プレイ`;
+        } else {
+            callEn = "Love All; Play.";
+            callKana = "ラブオール；プレイ";
+        }
+    }
+
+    document.getElementById("board-call-en").innerHTML = callEn;
+    document.getElementById("board-call-kana").innerHTML = callKana;
     return;
   }
 

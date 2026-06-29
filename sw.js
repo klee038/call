@@ -1,4 +1,4 @@
-﻿const CACHE_NAME = 'umpire_v25.10'; 
+﻿const CACHE_NAME = 'umpire_v26.1'; 
 const urlsToCache = [
   './',
   './index.html',
