@@ -483,14 +483,14 @@ function openQROutputModal(index) {
     headerBar.appendChild(rightGroup);
     overlay.appendChild(headerBar);
 
-    let qrContainer = document.createElement('div');
-    qrContainer.style.cssText = "width: 80vw; height: 80vw; max-width: 280px; max-height: 280px; background-color: #ffffff; border-radius: 12px; padding: 15px; box-sizing: border-box; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; overflow: hidden; position: relative; border: 10px solid #1C1C1E; transition: max-width 0.3s, max-height 0.3s; margin-top: 50px;";
-    
-    // ★追加: 表示中番号のラベル（QR枠内上部中央）
+    // ★修正: statusLabel を qrContainer の上（外側）に配置
     let statusLabel = document.createElement('div');
-    statusLabel.style.cssText = "position: absolute; top: 8px; left: 50%; transform: translateX(-50%); color: #000000; font-size: 12px; font-weight: bold; letter-spacing: 1px; z-index: 10;";
-    qrContainer.appendChild(statusLabel);
+    statusLabel.style.cssText = "color: #E2E8F0; font-size: 16px; font-weight: bold; letter-spacing: 1px; text-align: center; height: 20px; line-height: 20px; margin-top: 30px; margin-bottom: 10px;";
+    overlay.appendChild(statusLabel);
 
+    let qrContainer = document.createElement('div');
+    qrContainer.style.cssText = "width: 80vw; height: 80vw; max-width: 280px; max-height: 280px; background-color: #ffffff; border-radius: 12px; padding: 15px; box-sizing: border-box; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; overflow: hidden; position: relative; border: 10px solid #1C1C1E; transition: max-width 0.3s, max-height 0.3s;";
+    
     let canvas = document.createElement('canvas');
     canvas.style.cssText = "width: 100% !important; height: 100% !important; max-width: 100% !important; max-height: 100% !important; object-fit: contain; display: block; pointer-events: none; transition: opacity 0.1s;";
     
@@ -518,7 +518,7 @@ function openQROutputModal(index) {
       if (val < 1) val = 1;
       if (val > totalChunks) val = totalChunks;
       drawSpecificQR(val - 1);
-      statusLabel.innerText = `${val}`; // ★現在番号のみ表示
+      statusLabel.innerText = `${val}`; 
       inputBox.value = ""; 
     };
 
@@ -540,7 +540,6 @@ function openQROutputModal(index) {
       let btn = document.createElement('button');
       btn.innerText = key;
       
-      // ★ENTERボタンの色をグレー系に変更
       if (key === 'ENTER') {
         btn.style.cssText = "height: 44px; background: #48484A; color: #E2E8F0; border: 1px solid #636366; border-radius: 8px; font-size: 13px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center;";
       } else if (key === 'DEL') {
@@ -655,11 +654,11 @@ function openQROutputModal(index) {
         calcBtn.style.borderColor = "#10B981";
         
         let currentIndexDisplay = parseInt(counterLabel.innerText.split(' / ')[0]);
-        statusLabel.innerText = `${currentIndexDisplay}`; // ★現在番号のみ表示
+        statusLabel.innerText = `${currentIndexDisplay}`; 
         inputBox.value = ""; 
       } else {
         manualInputContainer.style.display = 'none';
-        statusLabel.innerText = ""; // ★自動再生時は消す
+        statusLabel.innerText = ""; 
         qrAnimationTimer = setInterval(drawNextQR, 100);
         calcBtn.style.color = "#E2E8F0";
         calcBtn.style.borderColor = "#48484A";
@@ -775,13 +774,14 @@ function openCurrentMatchQRModal() {
     headerBar.appendChild(rightGroup);
     overlay.appendChild(headerBar);
 
-    let qrContainer = document.createElement('div');
-    qrContainer.style.cssText = "width: 80vw; height: 80vw; max-width: 280px; max-height: 280px; background-color: #ffffff; border-radius: 12px; padding: 15px; box-sizing: border-box; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; overflow: hidden; position: relative; border: 10px solid #1C1C1E; transition: max-width 0.3s, max-height 0.3s; margin-top: 50px;";
-    
+    // ★修正: statusLabel を qrContainer の上（外側）に配置
     let statusLabel = document.createElement('div');
-    statusLabel.style.cssText = "position: absolute; top: 8px; left: 50%; transform: translateX(-50%); color: #000000; font-size: 12px; font-weight: bold; letter-spacing: 1px; z-index: 10;";
-    qrContainer.appendChild(statusLabel);
+    statusLabel.style.cssText = "color: #E2E8F0; font-size: 16px; font-weight: bold; letter-spacing: 1px; text-align: center; height: 20px; line-height: 20px; margin-top: 30px; margin-bottom: 10px;";
+    overlay.appendChild(statusLabel);
 
+    let qrContainer = document.createElement('div');
+    qrContainer.style.cssText = "width: 80vw; height: 80vw; max-width: 280px; max-height: 280px; background-color: #ffffff; border-radius: 12px; padding: 15px; box-sizing: border-box; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; overflow: hidden; position: relative; border: 10px solid #1C1C1E; transition: max-width 0.3s, max-height 0.3s;";
+    
     let canvas = document.createElement('canvas');
     canvas.style.cssText = "width: 100% !important; height: 100% !important; max-width: 100% !important; max-height: 100% !important; object-fit: contain; display: block; pointer-events: none; transition: opacity 0.1s;";
     
@@ -1030,13 +1030,14 @@ function generateStartMatchQR(matchData) {
     headerBar.appendChild(rightGroup);
     overlay.appendChild(headerBar);
 
-    let qrContainer = document.createElement('div');
-    qrContainer.style.cssText = "width: 80vw; height: 80vw; max-width: 280px; max-height: 280px; background-color: #ffffff; border-radius: 12px; padding: 15px; box-sizing: border-box; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; overflow: hidden; position: relative; border: 10px solid #1C1C1E; transition: max-width 0.3s, max-height 0.3s; margin-top: 50px;";
-    
+    // ★修正: statusLabel を qrContainer の上（外側）に配置
     let statusLabel = document.createElement('div');
-    statusLabel.style.cssText = "position: absolute; top: 8px; left: 50%; transform: translateX(-50%); color: #000000; font-size: 12px; font-weight: bold; letter-spacing: 1px; z-index: 10;";
-    qrContainer.appendChild(statusLabel);
+    statusLabel.style.cssText = "color: #E2E8F0; font-size: 16px; font-weight: bold; letter-spacing: 1px; text-align: center; height: 20px; line-height: 20px; margin-top: 30px; margin-bottom: 10px;";
+    overlay.appendChild(statusLabel);
 
+    let qrContainer = document.createElement('div');
+    qrContainer.style.cssText = "width: 80vw; height: 80vw; max-width: 280px; max-height: 280px; background-color: #ffffff; border-radius: 12px; padding: 15px; box-sizing: border-box; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; overflow: hidden; position: relative; border: 10px solid #1C1C1E; transition: max-width 0.3s, max-height 0.3s;";
+    
     let canvas = document.createElement('canvas');
     canvas.style.cssText = "width: 100% !important; height: 100% !important; max-width: 100% !important; max-height: 100% !important; object-fit: contain; display: block; pointer-events: none; transition: opacity 0.1s;";
     
