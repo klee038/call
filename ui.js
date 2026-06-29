@@ -486,6 +486,11 @@ function openQROutputModal(index) {
     let qrContainer = document.createElement('div');
     qrContainer.style.cssText = "width: 80vw; height: 80vw; max-width: 280px; max-height: 280px; background-color: #ffffff; border-radius: 12px; padding: 15px; box-sizing: border-box; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; overflow: hidden; position: relative; border: 10px solid #1C1C1E; transition: max-width 0.3s, max-height 0.3s; margin-top: 50px;";
     
+    // ★追加: 表示中番号のラベル（QR枠内上部中央）
+    let statusLabel = document.createElement('div');
+    statusLabel.style.cssText = "position: absolute; top: 8px; left: 50%; transform: translateX(-50%); color: #000000; font-size: 12px; font-weight: bold; letter-spacing: 1px; z-index: 10;";
+    qrContainer.appendChild(statusLabel);
+
     let canvas = document.createElement('canvas');
     canvas.style.cssText = "width: 100% !important; height: 100% !important; max-width: 100% !important; max-height: 100% !important; object-fit: contain; display: block; pointer-events: none; transition: opacity 0.1s;";
     
@@ -498,11 +503,6 @@ function openQROutputModal(index) {
 
     let manualInputContainer = document.createElement('div');
     manualInputContainer.style.cssText = "display: none; flex-direction: column; align-items: center; gap: 10px; margin-top: 15px; width: 100%; max-width: 260px; z-index: 10001;";
-
-    // ★追加: 表示中番号のラベル
-    let statusLabel = document.createElement('div');
-    statusLabel.style.cssText = "color: #E2E8F0; font-size: 14px; font-weight: bold; margin-bottom: -5px; letter-spacing: 1px;";
-    manualInputContainer.appendChild(statusLabel);
 
     let inputBox = document.createElement('input');
     inputBox.type = "tel";
@@ -518,8 +518,8 @@ function openQROutputModal(index) {
       if (val < 1) val = 1;
       if (val > totalChunks) val = totalChunks;
       drawSpecificQR(val - 1);
-      statusLabel.innerText = `表示中: ${val} / ${totalChunks}`;
-      inputBox.value = ""; // ★修正: 次の入力に備えて即座に空にする
+      statusLabel.innerText = `${val}`; // ★現在番号のみ表示
+      inputBox.value = ""; 
     };
 
     inputBox.addEventListener('keypress', function(e) {
@@ -535,27 +535,24 @@ function openQROutputModal(index) {
     let fixedNumpad = document.createElement('div');
     fixedNumpad.style.cssText = "display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 100%;";
 
-    // ★修正: ボタンを「DEL」「ENTER」に変更
     const keys = ['1','2','3','4','5','6','7','8','9','DEL','0','ENTER'];
     keys.forEach(key => {
       let btn = document.createElement('button');
       btn.innerText = key;
-      btn.style.cssText = "height: 44px; background: #1C1C1E; color: #E2E8F0; border: 1px solid #333333; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center;";
       
+      // ★ENTERボタンの色をグレー系に変更
       if (key === 'ENTER') {
-        btn.style.backgroundColor = "#10B981";
-        btn.style.color = "#000000";
-        btn.style.border = "none";
-        btn.style.fontSize = "13px";
+        btn.style.cssText = "height: 44px; background: #48484A; color: #E2E8F0; border: 1px solid #636366; border-radius: 8px; font-size: 13px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center;";
       } else if (key === 'DEL') {
-        btn.style.backgroundColor = "#2C2C2E";
-        btn.style.fontSize = "14px";
+        btn.style.cssText = "height: 44px; background: #2C2C2E; color: #E2E8F0; border: 1px solid #333333; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center;";
+      } else {
+        btn.style.cssText = "height: 44px; background: #1C1C1E; color: #E2E8F0; border: 1px solid #333333; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center;";
       }
 
       btn.onclick = function(e) {
         e.stopPropagation();
         if (key === 'DEL') {
-          inputBox.value = ""; // ★修正: 一文字ではなく一括クリア
+          inputBox.value = ""; 
         } else if (key === 'ENTER') {
           handleManualInput();
         } else {
@@ -658,10 +655,11 @@ function openQROutputModal(index) {
         calcBtn.style.borderColor = "#10B981";
         
         let currentIndexDisplay = parseInt(counterLabel.innerText.split(' / ')[0]);
-        statusLabel.innerText = `表示中: ${currentIndexDisplay} / ${totalChunks}`;
-        inputBox.value = ""; // 空にして待機
+        statusLabel.innerText = `${currentIndexDisplay}`; // ★現在番号のみ表示
+        inputBox.value = ""; 
       } else {
         manualInputContainer.style.display = 'none';
+        statusLabel.innerText = ""; // ★自動再生時は消す
         qrAnimationTimer = setInterval(drawNextQR, 100);
         calcBtn.style.color = "#E2E8F0";
         calcBtn.style.borderColor = "#48484A";
@@ -780,6 +778,10 @@ function openCurrentMatchQRModal() {
     let qrContainer = document.createElement('div');
     qrContainer.style.cssText = "width: 80vw; height: 80vw; max-width: 280px; max-height: 280px; background-color: #ffffff; border-radius: 12px; padding: 15px; box-sizing: border-box; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; overflow: hidden; position: relative; border: 10px solid #1C1C1E; transition: max-width 0.3s, max-height 0.3s; margin-top: 50px;";
     
+    let statusLabel = document.createElement('div');
+    statusLabel.style.cssText = "position: absolute; top: 8px; left: 50%; transform: translateX(-50%); color: #000000; font-size: 12px; font-weight: bold; letter-spacing: 1px; z-index: 10;";
+    qrContainer.appendChild(statusLabel);
+
     let canvas = document.createElement('canvas');
     canvas.style.cssText = "width: 100% !important; height: 100% !important; max-width: 100% !important; max-height: 100% !important; object-fit: contain; display: block; pointer-events: none; transition: opacity 0.1s;";
     
@@ -792,10 +794,6 @@ function openCurrentMatchQRModal() {
 
     let manualInputContainer = document.createElement('div');
     manualInputContainer.style.cssText = "display: none; flex-direction: column; align-items: center; gap: 10px; margin-top: 15px; width: 100%; max-width: 260px; z-index: 10001;";
-
-    let statusLabel = document.createElement('div');
-    statusLabel.style.cssText = "color: #E2E8F0; font-size: 14px; font-weight: bold; margin-bottom: -5px; letter-spacing: 1px;";
-    manualInputContainer.appendChild(statusLabel);
 
     let inputBox = document.createElement('input');
     inputBox.type = "tel";
@@ -811,7 +809,7 @@ function openCurrentMatchQRModal() {
       if (val < 1) val = 1;
       if (val > totalChunks) val = totalChunks;
       drawSpecificQR(val - 1);
-      statusLabel.innerText = `表示中: ${val} / ${totalChunks}`;
+      statusLabel.innerText = `${val}`; 
       inputBox.value = ""; 
     };
 
@@ -832,22 +830,19 @@ function openCurrentMatchQRModal() {
     keys.forEach(key => {
       let btn = document.createElement('button');
       btn.innerText = key;
-      btn.style.cssText = "height: 44px; background: #1C1C1E; color: #E2E8F0; border: 1px solid #333333; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center;";
       
       if (key === 'ENTER') {
-        btn.style.backgroundColor = "#10B981";
-        btn.style.color = "#000000";
-        btn.style.border = "none";
-        btn.style.fontSize = "13px";
+        btn.style.cssText = "height: 44px; background: #48484A; color: #E2E8F0; border: 1px solid #636366; border-radius: 8px; font-size: 13px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center;";
       } else if (key === 'DEL') {
-        btn.style.backgroundColor = "#2C2C2E";
-        btn.style.fontSize = "14px";
+        btn.style.cssText = "height: 44px; background: #2C2C2E; color: #E2E8F0; border: 1px solid #333333; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center;";
+      } else {
+        btn.style.cssText = "height: 44px; background: #1C1C1E; color: #E2E8F0; border: 1px solid #333333; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center;";
       }
 
       btn.onclick = function(e) {
         e.stopPropagation();
         if (key === 'DEL') {
-          inputBox.value = "";
+          inputBox.value = ""; 
         } else if (key === 'ENTER') {
           handleManualInput();
         } else {
@@ -950,10 +945,11 @@ function openCurrentMatchQRModal() {
         calcBtn.style.borderColor = "#10B981";
         
         let currentIndexDisplay = parseInt(counterLabel.innerText.split(' / ')[0]);
-        statusLabel.innerText = `表示中: ${currentIndexDisplay} / ${totalChunks}`;
+        statusLabel.innerText = `${currentIndexDisplay}`; 
         inputBox.value = ""; 
       } else {
         manualInputContainer.style.display = 'none';
+        statusLabel.innerText = ""; 
         qrAnimationTimer = setInterval(drawNextQR, 100);
         calcBtn.style.color = "#E2E8F0";
         calcBtn.style.borderColor = "#48484A";
@@ -1037,6 +1033,10 @@ function generateStartMatchQR(matchData) {
     let qrContainer = document.createElement('div');
     qrContainer.style.cssText = "width: 80vw; height: 80vw; max-width: 280px; max-height: 280px; background-color: #ffffff; border-radius: 12px; padding: 15px; box-sizing: border-box; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; overflow: hidden; position: relative; border: 10px solid #1C1C1E; transition: max-width 0.3s, max-height 0.3s; margin-top: 50px;";
     
+    let statusLabel = document.createElement('div');
+    statusLabel.style.cssText = "position: absolute; top: 8px; left: 50%; transform: translateX(-50%); color: #000000; font-size: 12px; font-weight: bold; letter-spacing: 1px; z-index: 10;";
+    qrContainer.appendChild(statusLabel);
+
     let canvas = document.createElement('canvas');
     canvas.style.cssText = "width: 100% !important; height: 100% !important; max-width: 100% !important; max-height: 100% !important; object-fit: contain; display: block; pointer-events: none; transition: opacity 0.1s;";
     
@@ -1049,10 +1049,6 @@ function generateStartMatchQR(matchData) {
 
     let manualInputContainer = document.createElement('div');
     manualInputContainer.style.cssText = "display: none; flex-direction: column; align-items: center; gap: 10px; margin-top: 15px; width: 100%; max-width: 260px; z-index: 10001;";
-
-    let statusLabel = document.createElement('div');
-    statusLabel.style.cssText = "color: #E2E8F0; font-size: 14px; font-weight: bold; margin-bottom: -5px; letter-spacing: 1px;";
-    manualInputContainer.appendChild(statusLabel);
 
     let inputBox = document.createElement('input');
     inputBox.type = "tel";
@@ -1068,7 +1064,7 @@ function generateStartMatchQR(matchData) {
       if (val < 1) val = 1;
       if (val > totalChunks) val = totalChunks;
       drawSpecificQR(val - 1);
-      statusLabel.innerText = `表示中: ${val} / ${totalChunks}`;
+      statusLabel.innerText = `${val}`; 
       inputBox.value = ""; 
     };
 
@@ -1089,22 +1085,19 @@ function generateStartMatchQR(matchData) {
     keys.forEach(key => {
       let btn = document.createElement('button');
       btn.innerText = key;
-      btn.style.cssText = "height: 44px; background: #1C1C1E; color: #E2E8F0; border: 1px solid #333333; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center;";
       
       if (key === 'ENTER') {
-        btn.style.backgroundColor = "#10B981";
-        btn.style.color = "#000000";
-        btn.style.border = "none";
-        btn.style.fontSize = "13px";
+        btn.style.cssText = "height: 44px; background: #48484A; color: #E2E8F0; border: 1px solid #636366; border-radius: 8px; font-size: 13px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center;";
       } else if (key === 'DEL') {
-        btn.style.backgroundColor = "#2C2C2E";
-        btn.style.fontSize = "14px";
+        btn.style.cssText = "height: 44px; background: #2C2C2E; color: #E2E8F0; border: 1px solid #333333; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center;";
+      } else {
+        btn.style.cssText = "height: 44px; background: #1C1C1E; color: #E2E8F0; border: 1px solid #333333; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center;";
       }
 
       btn.onclick = function(e) {
         e.stopPropagation();
         if (key === 'DEL') {
-          inputBox.value = "";
+          inputBox.value = ""; 
         } else if (key === 'ENTER') {
           handleManualInput();
         } else {
@@ -1131,7 +1124,7 @@ function generateStartMatchQR(matchData) {
       QRCode.toCanvas(canvas, payload, {
         margin: 1,
         version: 4, 
-        width: 800,
+        width: 800, 
         color: { dark: "#000000", light: "#ffffff" },
         errorCorrectionLevel: 'L'
       }, function (error) {
@@ -1207,10 +1200,11 @@ function generateStartMatchQR(matchData) {
         calcBtn.style.borderColor = "#10B981";
         
         let currentIndexDisplay = parseInt(counterLabel.innerText.split(' / ')[0]);
-        statusLabel.innerText = `表示中: ${currentIndexDisplay} / ${totalChunks}`;
+        statusLabel.innerText = `${currentIndexDisplay}`; 
         inputBox.value = ""; 
       } else {
         manualInputContainer.style.display = 'none';
+        statusLabel.innerText = ""; 
         qrAnimationTimer = setInterval(drawNextQR, 100);
         calcBtn.style.color = "#E2E8F0";
         calcBtn.style.borderColor = "#48484A";
