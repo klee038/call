@@ -496,9 +496,13 @@ function openQROutputModal(index) {
     qrContainer.appendChild(counterLabel);
     overlay.appendChild(qrContainer);
 
-    // ★追加：テキストボックス＋12キー固定テンキーのコンテナ
     let manualInputContainer = document.createElement('div');
     manualInputContainer.style.cssText = "display: none; flex-direction: column; align-items: center; gap: 10px; margin-top: 15px; width: 100%; max-width: 260px; z-index: 10001;";
+
+    // ★追加: 表示中番号のラベル
+    let statusLabel = document.createElement('div');
+    statusLabel.style.cssText = "color: #E2E8F0; font-size: 14px; font-weight: bold; margin-bottom: -5px; letter-spacing: 1px;";
+    manualInputContainer.appendChild(statusLabel);
 
     let inputBox = document.createElement('input');
     inputBox.type = "tel";
@@ -513,8 +517,9 @@ function openQROutputModal(index) {
       if (isNaN(val)) return;
       if (val < 1) val = 1;
       if (val > totalChunks) val = totalChunks;
-      inputBox.value = val;
       drawSpecificQR(val - 1);
+      statusLabel.innerText = `表示中: ${val} / ${totalChunks}`;
+      inputBox.value = ""; // ★修正: 次の入力に備えて即座に空にする
     };
 
     inputBox.addEventListener('keypress', function(e) {
@@ -530,26 +535,28 @@ function openQROutputModal(index) {
     let fixedNumpad = document.createElement('div');
     fixedNumpad.style.cssText = "display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 100%;";
 
-    const keys = ['1','2','3','4','5','6','7','8','9','BS','0','GO'];
+    // ★修正: ボタンを「DEL」「ENTER」に変更
+    const keys = ['1','2','3','4','5','6','7','8','9','DEL','0','ENTER'];
     keys.forEach(key => {
       let btn = document.createElement('button');
-      btn.innerText = key === 'BS' ? '?' : key;
+      btn.innerText = key;
       btn.style.cssText = "height: 44px; background: #1C1C1E; color: #E2E8F0; border: 1px solid #333333; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center;";
       
-      if (key === 'GO') {
+      if (key === 'ENTER') {
         btn.style.backgroundColor = "#10B981";
         btn.style.color = "#000000";
         btn.style.border = "none";
-      } else if (key === 'BS') {
+        btn.style.fontSize = "13px";
+      } else if (key === 'DEL') {
         btn.style.backgroundColor = "#2C2C2E";
-        btn.style.fontSize = "16px";
+        btn.style.fontSize = "14px";
       }
 
       btn.onclick = function(e) {
         e.stopPropagation();
-        if (key === 'BS') {
-          inputBox.value = inputBox.value.slice(0, -1);
-        } else if (key === 'GO') {
+        if (key === 'DEL') {
+          inputBox.value = ""; // ★修正: 一文字ではなく一括クリア
+        } else if (key === 'ENTER') {
           handleManualInput();
         } else {
           inputBox.value += key;
@@ -634,7 +641,6 @@ function openQROutputModal(index) {
       }, 300);
     };
 
-    // ★修正：計算機ボタンクリックでテキスト＆固定テンキーを表示
     calcBtn.onclick = function(e) {
       e.stopPropagation();
       if (totalChunks <= 1) return;
@@ -651,9 +657,9 @@ function openQROutputModal(index) {
         calcBtn.style.color = "#10B981";
         calcBtn.style.borderColor = "#10B981";
         
-        // 現在表示されている番号をインプットにセット
         let currentIndexDisplay = parseInt(counterLabel.innerText.split(' / ')[0]);
-        inputBox.value = currentIndexDisplay;
+        statusLabel.innerText = `表示中: ${currentIndexDisplay} / ${totalChunks}`;
+        inputBox.value = ""; // 空にして待機
       } else {
         manualInputContainer.style.display = 'none';
         qrAnimationTimer = setInterval(drawNextQR, 100);
@@ -787,6 +793,10 @@ function openCurrentMatchQRModal() {
     let manualInputContainer = document.createElement('div');
     manualInputContainer.style.cssText = "display: none; flex-direction: column; align-items: center; gap: 10px; margin-top: 15px; width: 100%; max-width: 260px; z-index: 10001;";
 
+    let statusLabel = document.createElement('div');
+    statusLabel.style.cssText = "color: #E2E8F0; font-size: 14px; font-weight: bold; margin-bottom: -5px; letter-spacing: 1px;";
+    manualInputContainer.appendChild(statusLabel);
+
     let inputBox = document.createElement('input');
     inputBox.type = "tel";
     inputBox.inputMode = "numeric";
@@ -800,8 +810,9 @@ function openCurrentMatchQRModal() {
       if (isNaN(val)) return;
       if (val < 1) val = 1;
       if (val > totalChunks) val = totalChunks;
-      inputBox.value = val;
       drawSpecificQR(val - 1);
+      statusLabel.innerText = `表示中: ${val} / ${totalChunks}`;
+      inputBox.value = ""; 
     };
 
     inputBox.addEventListener('keypress', function(e) {
@@ -817,26 +828,27 @@ function openCurrentMatchQRModal() {
     let fixedNumpad = document.createElement('div');
     fixedNumpad.style.cssText = "display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 100%;";
 
-    const keys = ['1','2','3','4','5','6','7','8','9','BS','0','GO'];
+    const keys = ['1','2','3','4','5','6','7','8','9','DEL','0','ENTER'];
     keys.forEach(key => {
       let btn = document.createElement('button');
-      btn.innerText = key === 'BS' ? '?' : key;
+      btn.innerText = key;
       btn.style.cssText = "height: 44px; background: #1C1C1E; color: #E2E8F0; border: 1px solid #333333; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center;";
       
-      if (key === 'GO') {
+      if (key === 'ENTER') {
         btn.style.backgroundColor = "#10B981";
         btn.style.color = "#000000";
         btn.style.border = "none";
-      } else if (key === 'BS') {
+        btn.style.fontSize = "13px";
+      } else if (key === 'DEL') {
         btn.style.backgroundColor = "#2C2C2E";
-        btn.style.fontSize = "16px";
+        btn.style.fontSize = "14px";
       }
 
       btn.onclick = function(e) {
         e.stopPropagation();
-        if (key === 'BS') {
-          inputBox.value = inputBox.value.slice(0, -1);
-        } else if (key === 'GO') {
+        if (key === 'DEL') {
+          inputBox.value = "";
+        } else if (key === 'ENTER') {
           handleManualInput();
         } else {
           inputBox.value += key;
@@ -938,7 +950,8 @@ function openCurrentMatchQRModal() {
         calcBtn.style.borderColor = "#10B981";
         
         let currentIndexDisplay = parseInt(counterLabel.innerText.split(' / ')[0]);
-        inputBox.value = currentIndexDisplay;
+        statusLabel.innerText = `表示中: ${currentIndexDisplay} / ${totalChunks}`;
+        inputBox.value = ""; 
       } else {
         manualInputContainer.style.display = 'none';
         qrAnimationTimer = setInterval(drawNextQR, 100);
@@ -1037,6 +1050,10 @@ function generateStartMatchQR(matchData) {
     let manualInputContainer = document.createElement('div');
     manualInputContainer.style.cssText = "display: none; flex-direction: column; align-items: center; gap: 10px; margin-top: 15px; width: 100%; max-width: 260px; z-index: 10001;";
 
+    let statusLabel = document.createElement('div');
+    statusLabel.style.cssText = "color: #E2E8F0; font-size: 14px; font-weight: bold; margin-bottom: -5px; letter-spacing: 1px;";
+    manualInputContainer.appendChild(statusLabel);
+
     let inputBox = document.createElement('input');
     inputBox.type = "tel";
     inputBox.inputMode = "numeric";
@@ -1050,8 +1067,9 @@ function generateStartMatchQR(matchData) {
       if (isNaN(val)) return;
       if (val < 1) val = 1;
       if (val > totalChunks) val = totalChunks;
-      inputBox.value = val;
       drawSpecificQR(val - 1);
+      statusLabel.innerText = `表示中: ${val} / ${totalChunks}`;
+      inputBox.value = ""; 
     };
 
     inputBox.addEventListener('keypress', function(e) {
@@ -1067,26 +1085,27 @@ function generateStartMatchQR(matchData) {
     let fixedNumpad = document.createElement('div');
     fixedNumpad.style.cssText = "display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 100%;";
 
-    const keys = ['1','2','3','4','5','6','7','8','9','BS','0','GO'];
+    const keys = ['1','2','3','4','5','6','7','8','9','DEL','0','ENTER'];
     keys.forEach(key => {
       let btn = document.createElement('button');
-      btn.innerText = key === 'BS' ? '?' : key;
+      btn.innerText = key;
       btn.style.cssText = "height: 44px; background: #1C1C1E; color: #E2E8F0; border: 1px solid #333333; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center;";
       
-      if (key === 'GO') {
+      if (key === 'ENTER') {
         btn.style.backgroundColor = "#10B981";
         btn.style.color = "#000000";
         btn.style.border = "none";
-      } else if (key === 'BS') {
+        btn.style.fontSize = "13px";
+      } else if (key === 'DEL') {
         btn.style.backgroundColor = "#2C2C2E";
-        btn.style.fontSize = "16px";
+        btn.style.fontSize = "14px";
       }
 
       btn.onclick = function(e) {
         e.stopPropagation();
-        if (key === 'BS') {
-          inputBox.value = inputBox.value.slice(0, -1);
-        } else if (key === 'GO') {
+        if (key === 'DEL') {
+          inputBox.value = "";
+        } else if (key === 'ENTER') {
           handleManualInput();
         } else {
           inputBox.value += key;
@@ -1188,7 +1207,8 @@ function generateStartMatchQR(matchData) {
         calcBtn.style.borderColor = "#10B981";
         
         let currentIndexDisplay = parseInt(counterLabel.innerText.split(' / ')[0]);
-        inputBox.value = currentIndexDisplay;
+        statusLabel.innerText = `表示中: ${currentIndexDisplay} / ${totalChunks}`;
+        inputBox.value = ""; 
       } else {
         manualInputContainer.style.display = 'none';
         qrAnimationTimer = setInterval(drawNextQR, 100);
