@@ -253,9 +253,9 @@
 </div>
 
 <!-- ダイレクトQR表示用オーバーレイ -->
-<!-- どこをタップしても閉じるように onclick を全面に設定 -->
-<div id="qr-direct-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: rgba(0,0,0,0.85); z-index: 9999; justify-content: center; align-items: center; cursor: pointer;" onclick="closeQROutputModal()">
-  <!-- この中に JavaScript で真っ白な高画質QRキャンバスが挿入されます -->
+<!-- ★修正：背景タップでの closeQROutputModal() を廃止し、flex-direction: column を追加 -->
+<div id="qr-direct-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: rgba(0,0,0,0.85); z-index: 9999; justify-content: center; align-items: center; cursor: pointer; flex-direction: column;">
+  <!-- この中に JavaScript で真っ白な高画質QRキャンバスとテンキーが挿入されます -->
 </div>
 
 <script>

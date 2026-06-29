@@ -203,7 +203,7 @@ function openQRScannerModal() {
   const wrapper = document.getElementById('qr-reader-wrapper');
   const spinner = document.getElementById('qr-loading-spinner');
   const dotsContainer = document.getElementById('qr-progress-dots');
-  const missingNumEl = document.getElementById('qr-missing-numbers'); // ★追加
+  const missingNumEl = document.getElementById('qr-missing-numbers');
   
   if (!overlay || !wrapper) return;
   
@@ -216,7 +216,7 @@ function openQRScannerModal() {
   }
   
   if (missingNumEl) {
-    missingNumEl.innerText = ''; // ★追加：開くたびにテキストをリセット
+    missingNumEl.innerText = '';
   }
   
   wrapper.innerHTML = `<div id="qr-reader" style="width: 100%; min-height: 250px; background-color: #000; border: 1px solid #333; border-radius: 8px;"></div>`;
@@ -269,7 +269,6 @@ function openQRScannerModal() {
           if (targetDot) targetDot.style.backgroundColor = '#10B981';
         }
 
-        // ★追加：未取得のフレーム番号の割り出しと25文字省略ロジック
         if (missingNumEl) {
           let missingNumbers = [];
           for (let i = 0; i < totalChunksExpected; i++) {
@@ -297,7 +296,7 @@ function openQRScannerModal() {
         const collectedCount = scannedChunks.filter(Boolean).length;
         if (collectedCount === totalChunksExpected) {
           
-          if (missingNumEl) missingNumEl.innerText = ""; // ★追加：全て揃ったら空にする
+          if (missingNumEl) missingNumEl.innerText = "";
           
           const stopCameraAndProcess = async () => {
             if (html5QrCode) {
@@ -454,40 +453,43 @@ function openQROutputModal(index) {
     const totalChunks = chunks.length;
     
     overlay.innerHTML = ""; 
+    overlay.onclick = null; // 背景タップでのアクションを完全に無効化
+    
+    // ★ヘッダーバー生成
+    let headerBar = document.createElement('div');
+    headerBar.style.cssText = "position: absolute; top: 0; left: 0; width: 100%; padding: 15px 20px; box-sizing: border-box; display: flex; justify-content: space-between; align-items: center; z-index: 10001;";
+    
+    let calcBtn = document.createElement('button');
+    calcBtn.style.cssText = "background: #1C1C1E; color: #E2E8F0; border: 1px solid #48484A; border-radius: 8px; padding: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px rgba(0,0,0,0.3); transition: all 0.2s;";
+    calcBtn.innerHTML = `<svg viewBox="0 0 24 24" style="width: 24px; height: 24px; fill: currentColor;"><path d="M4 4h4v4H4V4zm6 0h4v4h-4V4zM4 10h4v4H4v-4zm6 0h4v4h-4v-4zM4 16h4v4H4v-4zm6 0h4v4h-4v-4zm6-12h4v4h-4V4zm0 6h4v4h-4v-4zm0 6h4v4h-4v-4z"/></svg>`;
+    headerBar.appendChild(calcBtn);
+    
+    let rightGroup = document.createElement('div');
+    rightGroup.style.cssText = "display: flex; gap: 15px;";
+    
+    let zoomBtn = document.createElement('button');
+    zoomBtn.style.cssText = "background: #1C1C1E; color: #E2E8F0; border: 1px solid #48484A; border-radius: 8px; padding: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px rgba(0,0,0,0.3); transition: all 0.2s;";
+    zoomBtn.innerHTML = `<svg viewBox="0 0 24 24" style="width: 24px; height: 24px; fill: currentColor;"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/><path d="M12 10h-2v2H9v-2H7V9h2V7h1v2h2v1z"/></svg>`;
+    
+    let closeBtn = document.createElement('button');
+    closeBtn.style.cssText = "background: #1C1C1E; color: #A1A1AA; border: 1px solid #48484A; border-radius: 8px; padding: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px rgba(0,0,0,0.3);";
+    closeBtn.innerHTML = `<svg viewBox="0 0 24 24" style="width: 24px; height: 24px; fill: currentColor;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>`;
+    closeBtn.onclick = function(e) {
+      e.stopPropagation();
+      closeQROutputModal();
+    };
+    
+    rightGroup.appendChild(zoomBtn);
+    rightGroup.appendChild(closeBtn);
+    headerBar.appendChild(rightGroup);
+    overlay.appendChild(headerBar);
+
     let qrContainer = document.createElement('div');
-    qrContainer.style.cssText = "width: 80vw; height: 80vw; max-width: 280px; max-height: 280px; background-color: #ffffff; border-radius: 12px; padding: 15px; box-sizing: border-box; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; overflow: hidden; position: relative; border: 10px solid #1C1C1E; transition: max-width 0.3s, max-height 0.3s;";
+    qrContainer.style.cssText = "width: 80vw; height: 80vw; max-width: 280px; max-height: 280px; background-color: #ffffff; border-radius: 12px; padding: 15px; box-sizing: border-box; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; overflow: hidden; position: relative; border: 10px solid #1C1C1E; transition: max-width 0.3s, max-height 0.3s; margin-top: 50px;";
     
     let canvas = document.createElement('canvas');
-    canvas.style.cssText = "width: 100% !important; height: 100% !important; max-width: 100% !important; max-height: 100% !important; object-fit: contain; display: block; cursor: pointer; transition: opacity 0.1s;";
-    
-    let isExpanded = false;
-    let isAnimating = false;
-    canvas.onclick = function(e) {
-      e.stopPropagation(); 
-      if (isAnimating) return; 
-      isAnimating = true;
-      isExpanded = !isExpanded;
-      
-      clearInterval(qrAnimationTimer);
-      canvas.style.opacity = "0";
-
-      if (isExpanded) {
-        qrContainer.style.maxWidth = "80vh";
-        qrContainer.style.maxHeight = "80vh";
-      } else {
-        qrContainer.style.maxWidth = "280px";
-        qrContainer.style.maxHeight = "280px";
-      }
-
-      setTimeout(() => {
-        drawNextQR(); 
-        canvas.style.opacity = "1";
-        if (totalChunks > 1) {
-          qrAnimationTimer = setInterval(drawNextQR, 100);
-        }
-        isAnimating = false;
-      }, 300);
-    };
+    // ★QRのクリック判定を完全に消滅させ、マウスカーソルも乗らないようにする
+    canvas.style.cssText = "width: 100% !important; height: 100% !important; max-width: 100% !important; max-height: 100% !important; object-fit: contain; display: block; pointer-events: none; transition: opacity 0.1s;";
     
     let counterLabel = document.createElement('div');
     counterLabel.style.cssText = "position: absolute; bottom: 5px; right: 10px; font-size: 10px; color: #999; font-family: monospace;";
@@ -495,7 +497,27 @@ function openQROutputModal(index) {
     qrContainer.appendChild(canvas);
     qrContainer.appendChild(counterLabel);
     overlay.appendChild(qrContainer);
-    overlay.style.display = 'flex';
+
+    let numpadContainer = document.createElement('div');
+    numpadContainer.style.cssText = "display: none; flex-wrap: wrap; gap: 8px; justify-content: center; max-width: 300px; margin-top: 20px;";
+    for (let i = 0; i < totalChunks; i++) {
+      let numBtn = document.createElement('button');
+      numBtn.innerText = i + 1;
+      numBtn.style.cssText = "width: 44px; height: 44px; background: #1C1C1E; color: #E2E8F0; border: 1px solid #333333; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer;";
+      numBtn.onclick = function(e) {
+        e.stopPropagation();
+        drawSpecificQR(i);
+        // タップした数字を強調表示
+        Array.from(numpadContainer.children).forEach(btn => {
+            btn.style.backgroundColor = "#1C1C1E";
+            btn.style.color = "#E2E8F0";
+        });
+        numBtn.style.backgroundColor = "#10B981";
+        numBtn.style.color = "#000000";
+      };
+      numpadContainer.appendChild(numBtn);
+    }
+    overlay.appendChild(numpadContainer);
 
     let indices = Array.from({length: totalChunks}, (_, i) => i);
     const shuffleArray = (array) => {
@@ -506,25 +528,28 @@ function openQROutputModal(index) {
     };
 
     let currentStep = 0;
-    const drawNextQR = () => {
-      if (currentStep === 0) {
-        shuffleArray(indices);
-      }
-      
-      let chunkIndex = indices[currentStep];
-      let payload = `QRX:${chunkIndex + 1}/${totalChunks}:${chunks[chunkIndex]}`;
-      
+    
+    // ★独立させた描画関数
+    const drawSpecificQR = (index) => {
+      let payload = `QRX:${index + 1}/${totalChunks}:${chunks[index]}`;
       QRCode.toCanvas(canvas, payload, {
         margin: 1,
-        version: 4, 
+        version: 3, 
         width: 800, 
         color: { dark: "#000000", light: "#ffffff" },
         errorCorrectionLevel: 'L'
       }, function (error) {
         if (error) console.error("QR描画エラー:", error);
       });
-      
-      counterLabel.innerText = `${chunkIndex + 1} / ${totalChunks}`;
+      counterLabel.innerText = `${index + 1} / ${totalChunks}`;
+    };
+
+    const drawNextQR = () => {
+      if (currentStep === 0) {
+        shuffleArray(indices);
+      }
+      let chunkIndex = indices[currentStep];
+      drawSpecificQR(chunkIndex);
       
       currentStep++;
       if (currentStep >= totalChunks) {
@@ -532,6 +557,82 @@ function openQROutputModal(index) {
       }
     };
 
+    let isPaused = false;
+    let isExpanded = false;
+    let isAnimating = false;
+
+    // ★虫眼鏡ボタンの処理
+    zoomBtn.onclick = function(e) {
+      e.stopPropagation();
+      if (isAnimating) return;
+      if (isPaused) return; // 一時停止中は拡大縮小を無効化
+      
+      isAnimating = true;
+      isExpanded = !isExpanded;
+      
+      clearInterval(qrAnimationTimer);
+      canvas.style.opacity = "0";
+
+      if (isExpanded) {
+        qrContainer.style.maxWidth = "80vh";
+        qrContainer.style.maxHeight = "80vh";
+        zoomBtn.style.color = "#10B981";
+        zoomBtn.style.borderColor = "#10B981";
+      } else {
+        qrContainer.style.maxWidth = "280px";
+        qrContainer.style.maxHeight = "280px";
+        zoomBtn.style.color = "#E2E8F0";
+        zoomBtn.style.borderColor = "#48484A";
+      }
+
+      setTimeout(() => {
+        drawNextQR();
+        canvas.style.opacity = "1";
+        if (totalChunks > 1) {
+          qrAnimationTimer = setInterval(drawNextQR, 100);
+        }
+        isAnimating = false;
+      }, 300);
+    };
+
+    // ★計算機ボタンの処理
+    calcBtn.onclick = function(e) {
+      e.stopPropagation();
+      if (totalChunks <= 1) return;
+      isPaused = !isPaused;
+      if (isPaused) {
+        clearInterval(qrAnimationTimer);
+        numpadContainer.style.display = 'flex';
+        // テンキーのスペース確保のため、強制的に小サイズに戻す
+        qrContainer.style.maxWidth = "280px";
+        qrContainer.style.maxHeight = "280px";
+        isExpanded = false;
+        zoomBtn.style.color = "#E2E8F0";
+        zoomBtn.style.borderColor = "#48484A";
+        
+        calcBtn.style.color = "#10B981";
+        calcBtn.style.borderColor = "#10B981";
+        
+        // 現在表示されているQRの番号を光らせる
+        let currentIndexDisplay = parseInt(counterLabel.innerText.split(' / ')[0]) - 1;
+        Array.from(numpadContainer.children).forEach((btn, idx) => {
+            if (idx === currentIndexDisplay) {
+                btn.style.backgroundColor = "#10B981";
+                btn.style.color = "#000000";
+            } else {
+                btn.style.backgroundColor = "#1C1C1E";
+                btn.style.color = "#E2E8F0";
+            }
+        });
+      } else {
+        numpadContainer.style.display = 'none';
+        qrAnimationTimer = setInterval(drawNextQR, 100);
+        calcBtn.style.color = "#E2E8F0";
+        calcBtn.style.borderColor = "#48484A";
+      }
+    };
+
+    overlay.style.display = 'flex';
     drawNextQR();
     if (totalChunks > 1) {
       qrAnimationTimer = setInterval(drawNextQR, 100); 
@@ -610,17 +711,115 @@ function openCurrentMatchQRModal() {
     const totalChunks = chunks.length;
     
     overlay.innerHTML = ""; 
+    overlay.onclick = null; 
+    
+    let headerBar = document.createElement('div');
+    headerBar.style.cssText = "position: absolute; top: 0; left: 0; width: 100%; padding: 15px 20px; box-sizing: border-box; display: flex; justify-content: space-between; align-items: center; z-index: 10001;";
+    
+    let calcBtn = document.createElement('button');
+    calcBtn.style.cssText = "background: #1C1C1E; color: #E2E8F0; border: 1px solid #48484A; border-radius: 8px; padding: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px rgba(0,0,0,0.3); transition: all 0.2s;";
+    calcBtn.innerHTML = `<svg viewBox="0 0 24 24" style="width: 24px; height: 24px; fill: currentColor;"><path d="M4 4h4v4H4V4zm6 0h4v4h-4V4zM4 10h4v4H4v-4zm6 0h4v4h-4v-4zM4 16h4v4H4v-4zm6 0h4v4h-4v-4zm6-12h4v4h-4V4zm0 6h4v4h-4v-4zm0 6h4v4h-4v-4z"/></svg>`;
+    headerBar.appendChild(calcBtn);
+    
+    let rightGroup = document.createElement('div');
+    rightGroup.style.cssText = "display: flex; gap: 15px;";
+    
+    let zoomBtn = document.createElement('button');
+    zoomBtn.style.cssText = "background: #1C1C1E; color: #E2E8F0; border: 1px solid #48484A; border-radius: 8px; padding: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px rgba(0,0,0,0.3); transition: all 0.2s;";
+    zoomBtn.innerHTML = `<svg viewBox="0 0 24 24" style="width: 24px; height: 24px; fill: currentColor;"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/><path d="M12 10h-2v2H9v-2H7V9h2V7h1v2h2v1z"/></svg>`;
+    
+    let closeBtn = document.createElement('button');
+    closeBtn.style.cssText = "background: #1C1C1E; color: #A1A1AA; border: 1px solid #48484A; border-radius: 8px; padding: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px rgba(0,0,0,0.3);";
+    closeBtn.innerHTML = `<svg viewBox="0 0 24 24" style="width: 24px; height: 24px; fill: currentColor;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>`;
+    closeBtn.onclick = function(e) {
+      e.stopPropagation();
+      closeQROutputModal();
+    };
+    
+    rightGroup.appendChild(zoomBtn);
+    rightGroup.appendChild(closeBtn);
+    headerBar.appendChild(rightGroup);
+    overlay.appendChild(headerBar);
+
     let qrContainer = document.createElement('div');
-    qrContainer.style.cssText = "width: 80vw; height: 80vw; max-width: 280px; max-height: 280px; background-color: #ffffff; border-radius: 12px; padding: 15px; box-sizing: border-box; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; overflow: hidden; position: relative; border: 10px solid #1C1C1E; transition: max-width 0.3s, max-height 0.3s;";
+    qrContainer.style.cssText = "width: 80vw; height: 80vw; max-width: 280px; max-height: 280px; background-color: #ffffff; border-radius: 12px; padding: 15px; box-sizing: border-box; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; overflow: hidden; position: relative; border: 10px solid #1C1C1E; transition: max-width 0.3s, max-height 0.3s; margin-top: 50px;";
     
     let canvas = document.createElement('canvas');
-    canvas.style.cssText = "width: 100% !important; height: 100% !important; max-width: 100% !important; max-height: 100% !important; object-fit: contain; display: block; cursor: pointer; transition: opacity 0.1s;";
+    canvas.style.cssText = "width: 100% !important; height: 100% !important; max-width: 100% !important; max-height: 100% !important; object-fit: contain; display: block; pointer-events: none; transition: opacity 0.1s;";
     
+    let counterLabel = document.createElement('div');
+    counterLabel.style.cssText = "position: absolute; bottom: 5px; right: 10px; font-size: 10px; color: #999; font-family: monospace;";
+    
+    qrContainer.appendChild(canvas);
+    qrContainer.appendChild(counterLabel);
+    overlay.appendChild(qrContainer);
+
+    let numpadContainer = document.createElement('div');
+    numpadContainer.style.cssText = "display: none; flex-wrap: wrap; gap: 8px; justify-content: center; max-width: 300px; margin-top: 20px;";
+    for (let i = 0; i < totalChunks; i++) {
+      let numBtn = document.createElement('button');
+      numBtn.innerText = i + 1;
+      numBtn.style.cssText = "width: 44px; height: 44px; background: #1C1C1E; color: #E2E8F0; border: 1px solid #333333; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer;";
+      numBtn.onclick = function(e) {
+        e.stopPropagation();
+        drawSpecificQR(i);
+        Array.from(numpadContainer.children).forEach(btn => {
+            btn.style.backgroundColor = "#1C1C1E";
+            btn.style.color = "#E2E8F0";
+        });
+        numBtn.style.backgroundColor = "#10B981";
+        numBtn.style.color = "#000000";
+      };
+      numpadContainer.appendChild(numBtn);
+    }
+    overlay.appendChild(numpadContainer);
+
+    let indices = Array.from({length: totalChunks}, (_, i) => i);
+    const shuffleArray = (array) => {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+    };
+
+    let currentStep = 0;
+    
+    const drawSpecificQR = (index) => {
+      let payload = `QRX:${index + 1}/${totalChunks}:${chunks[index]}`;
+      QRCode.toCanvas(canvas, payload, {
+        margin: 1,
+        version: 3, 
+        width: 800,
+        color: { dark: "#000000", light: "#ffffff" },
+        errorCorrectionLevel: 'L'
+      }, function (error) {
+        if (error) console.error("QR描画エラー:", error);
+      });
+      counterLabel.innerText = `${index + 1} / ${totalChunks}`;
+    };
+
+    const drawNextQR = () => {
+      if (currentStep === 0) {
+        shuffleArray(indices);
+      }
+      let chunkIndex = indices[currentStep];
+      drawSpecificQR(chunkIndex);
+      
+      currentStep++;
+      if (currentStep >= totalChunks) {
+        currentStep = 0;
+      }
+    };
+
+    let isPaused = false;
     let isExpanded = false;
     let isAnimating = false;
-    canvas.onclick = function(e) {
+
+    zoomBtn.onclick = function(e) {
       e.stopPropagation();
       if (isAnimating) return;
+      if (isPaused) return; 
+      
       isAnimating = true;
       isExpanded = !isExpanded;
       
@@ -630,9 +829,13 @@ function openCurrentMatchQRModal() {
       if (isExpanded) {
         qrContainer.style.maxWidth = "80vh";
         qrContainer.style.maxHeight = "80vh";
+        zoomBtn.style.color = "#10B981";
+        zoomBtn.style.borderColor = "#10B981";
       } else {
         qrContainer.style.maxWidth = "280px";
         qrContainer.style.maxHeight = "280px";
+        zoomBtn.style.color = "#E2E8F0";
+        zoomBtn.style.borderColor = "#48484A";
       }
 
       setTimeout(() => {
@@ -644,50 +847,42 @@ function openCurrentMatchQRModal() {
         isAnimating = false;
       }, 300);
     };
-    
-    let counterLabel = document.createElement('div');
-    counterLabel.style.cssText = "position: absolute; bottom: 5px; right: 10px; font-size: 10px; color: #999; font-family: monospace;";
-    
-    qrContainer.appendChild(canvas);
-    qrContainer.appendChild(counterLabel);
-    overlay.appendChild(qrContainer);
+
+    calcBtn.onclick = function(e) {
+      e.stopPropagation();
+      if (totalChunks <= 1) return;
+      isPaused = !isPaused;
+      if (isPaused) {
+        clearInterval(qrAnimationTimer);
+        numpadContainer.style.display = 'flex';
+        qrContainer.style.maxWidth = "280px";
+        qrContainer.style.maxHeight = "280px";
+        isExpanded = false;
+        zoomBtn.style.color = "#E2E8F0";
+        zoomBtn.style.borderColor = "#48484A";
+        
+        calcBtn.style.color = "#10B981";
+        calcBtn.style.borderColor = "#10B981";
+        
+        let currentIndexDisplay = parseInt(counterLabel.innerText.split(' / ')[0]) - 1;
+        Array.from(numpadContainer.children).forEach((btn, idx) => {
+            if (idx === currentIndexDisplay) {
+                btn.style.backgroundColor = "#10B981";
+                btn.style.color = "#000000";
+            } else {
+                btn.style.backgroundColor = "#1C1C1E";
+                btn.style.color = "#E2E8F0";
+            }
+        });
+      } else {
+        numpadContainer.style.display = 'none';
+        qrAnimationTimer = setInterval(drawNextQR, 100);
+        calcBtn.style.color = "#E2E8F0";
+        calcBtn.style.borderColor = "#48484A";
+      }
+    };
+
     overlay.style.display = 'flex';
-
-    let indices = Array.from({length: totalChunks}, (_, i) => i);
-    const shuffleArray = (array) => {
-      for (let i = array.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [array[i], array[j]] = [array[j], array[i]];
-      }
-    };
-
-    let currentStep = 0;
-    const drawNextQR = () => {
-      if (currentStep === 0) {
-        shuffleArray(indices);
-      }
-      
-      let chunkIndex = indices[currentStep];
-      let payload = `QRX:${chunkIndex + 1}/${totalChunks}:${chunks[chunkIndex]}`;
-      
-      QRCode.toCanvas(canvas, payload, {
-        margin: 1,
-        version: 4, 
-        width: 800,
-        color: { dark: "#000000", light: "#ffffff" },
-        errorCorrectionLevel: 'L'
-      }, function (error) {
-        if (error) console.error("QR描画エラー:", error);
-      });
-      
-      counterLabel.innerText = `${chunkIndex + 1} / ${totalChunks}`;
-      
-      currentStep++;
-      if (currentStep >= totalChunks) {
-        currentStep = 0;
-      }
-    };
-
     drawNextQR();
     if (totalChunks > 1) {
       qrAnimationTimer = setInterval(drawNextQR, 100); 
@@ -731,17 +926,115 @@ function generateStartMatchQR(matchData) {
     const totalChunks = chunks.length;
     
     overlay.innerHTML = ""; 
+    overlay.onclick = null; 
+    
+    let headerBar = document.createElement('div');
+    headerBar.style.cssText = "position: absolute; top: 0; left: 0; width: 100%; padding: 15px 20px; box-sizing: border-box; display: flex; justify-content: space-between; align-items: center; z-index: 10001;";
+    
+    let calcBtn = document.createElement('button');
+    calcBtn.style.cssText = "background: #1C1C1E; color: #E2E8F0; border: 1px solid #48484A; border-radius: 8px; padding: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px rgba(0,0,0,0.3); transition: all 0.2s;";
+    calcBtn.innerHTML = `<svg viewBox="0 0 24 24" style="width: 24px; height: 24px; fill: currentColor;"><path d="M4 4h4v4H4V4zm6 0h4v4h-4V4zM4 10h4v4H4v-4zm6 0h4v4h-4v-4zM4 16h4v4H4v-4zm6 0h4v4h-4v-4zm6-12h4v4h-4V4zm0 6h4v4h-4v-4zm0 6h4v4h-4v-4z"/></svg>`;
+    headerBar.appendChild(calcBtn);
+    
+    let rightGroup = document.createElement('div');
+    rightGroup.style.cssText = "display: flex; gap: 15px;";
+    
+    let zoomBtn = document.createElement('button');
+    zoomBtn.style.cssText = "background: #1C1C1E; color: #E2E8F0; border: 1px solid #48484A; border-radius: 8px; padding: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px rgba(0,0,0,0.3); transition: all 0.2s;";
+    zoomBtn.innerHTML = `<svg viewBox="0 0 24 24" style="width: 24px; height: 24px; fill: currentColor;"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/><path d="M12 10h-2v2H9v-2H7V9h2V7h1v2h2v1z"/></svg>`;
+    
+    let closeBtn = document.createElement('button');
+    closeBtn.style.cssText = "background: #1C1C1E; color: #A1A1AA; border: 1px solid #48484A; border-radius: 8px; padding: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px rgba(0,0,0,0.3);";
+    closeBtn.innerHTML = `<svg viewBox="0 0 24 24" style="width: 24px; height: 24px; fill: currentColor;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>`;
+    closeBtn.onclick = function(e) {
+      e.stopPropagation();
+      closeQROutputModal();
+    };
+    
+    rightGroup.appendChild(zoomBtn);
+    rightGroup.appendChild(closeBtn);
+    headerBar.appendChild(rightGroup);
+    overlay.appendChild(headerBar);
+
     let qrContainer = document.createElement('div');
-    qrContainer.style.cssText = "width: 80vw; height: 80vw; max-width: 280px; max-height: 280px; background-color: #ffffff; border-radius: 12px; padding: 15px; box-sizing: border-box; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; overflow: hidden; position: relative; border: 10px solid #1C1C1E; transition: max-width 0.3s, max-height 0.3s;";
+    qrContainer.style.cssText = "width: 80vw; height: 80vw; max-width: 280px; max-height: 280px; background-color: #ffffff; border-radius: 12px; padding: 15px; box-sizing: border-box; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; overflow: hidden; position: relative; border: 10px solid #1C1C1E; transition: max-width 0.3s, max-height 0.3s; margin-top: 50px;";
     
     let canvas = document.createElement('canvas');
-    canvas.style.cssText = "width: 100% !important; height: 100% !important; max-width: 100% !important; max-height: 100% !important; object-fit: contain; display: block; cursor: pointer; transition: opacity 0.1s;";
+    canvas.style.cssText = "width: 100% !important; height: 100% !important; max-width: 100% !important; max-height: 100% !important; object-fit: contain; display: block; pointer-events: none; transition: opacity 0.1s;";
     
+    let counterLabel = document.createElement('div');
+    counterLabel.style.cssText = "position: absolute; bottom: 5px; right: 10px; font-size: 10px; color: #999; font-family: monospace;";
+    
+    qrContainer.appendChild(canvas);
+    qrContainer.appendChild(counterLabel);
+    overlay.appendChild(qrContainer);
+
+    let numpadContainer = document.createElement('div');
+    numpadContainer.style.cssText = "display: none; flex-wrap: wrap; gap: 8px; justify-content: center; max-width: 300px; margin-top: 20px;";
+    for (let i = 0; i < totalChunks; i++) {
+      let numBtn = document.createElement('button');
+      numBtn.innerText = i + 1;
+      numBtn.style.cssText = "width: 44px; height: 44px; background: #1C1C1E; color: #E2E8F0; border: 1px solid #333333; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer;";
+      numBtn.onclick = function(e) {
+        e.stopPropagation();
+        drawSpecificQR(i);
+        Array.from(numpadContainer.children).forEach(btn => {
+            btn.style.backgroundColor = "#1C1C1E";
+            btn.style.color = "#E2E8F0";
+        });
+        numBtn.style.backgroundColor = "#10B981";
+        numBtn.style.color = "#000000";
+      };
+      numpadContainer.appendChild(numBtn);
+    }
+    overlay.appendChild(numpadContainer);
+
+    let indices = Array.from({length: totalChunks}, (_, i) => i);
+    const shuffleArray = (array) => {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+    };
+
+    let currentStep = 0;
+    
+    const drawSpecificQR = (index) => {
+      let payload = `QRX:${index + 1}/${totalChunks}:${chunks[index]}`;
+      QRCode.toCanvas(canvas, payload, {
+        margin: 1,
+        version: 3, 
+        width: 800,
+        color: { dark: "#000000", light: "#ffffff" },
+        errorCorrectionLevel: 'L'
+      }, function (error) {
+        if (error) console.error("QR描画エラー:", error);
+      });
+      counterLabel.innerText = `${index + 1} / ${totalChunks}`;
+    };
+
+    const drawNextQR = () => {
+      if (currentStep === 0) {
+        shuffleArray(indices);
+      }
+      let chunkIndex = indices[currentStep];
+      drawSpecificQR(chunkIndex);
+      
+      currentStep++;
+      if (currentStep >= totalChunks) {
+        currentStep = 0;
+      }
+    };
+
+    let isPaused = false;
     let isExpanded = false;
     let isAnimating = false;
-    canvas.onclick = function(e) {
+
+    zoomBtn.onclick = function(e) {
       e.stopPropagation();
       if (isAnimating) return;
+      if (isPaused) return; 
+      
       isAnimating = true;
       isExpanded = !isExpanded;
       
@@ -751,9 +1044,13 @@ function generateStartMatchQR(matchData) {
       if (isExpanded) {
         qrContainer.style.maxWidth = "80vh";
         qrContainer.style.maxHeight = "80vh";
+        zoomBtn.style.color = "#10B981";
+        zoomBtn.style.borderColor = "#10B981";
       } else {
         qrContainer.style.maxWidth = "280px";
         qrContainer.style.maxHeight = "280px";
+        zoomBtn.style.color = "#E2E8F0";
+        zoomBtn.style.borderColor = "#48484A";
       }
 
       setTimeout(() => {
@@ -765,50 +1062,42 @@ function generateStartMatchQR(matchData) {
         isAnimating = false;
       }, 300);
     };
-    
-    let counterLabel = document.createElement('div');
-    counterLabel.style.cssText = "position: absolute; bottom: 5px; right: 10px; font-size: 10px; color: #999; font-family: monospace;";
-    
-    qrContainer.appendChild(canvas);
-    qrContainer.appendChild(counterLabel);
-    overlay.appendChild(qrContainer);
+
+    calcBtn.onclick = function(e) {
+      e.stopPropagation();
+      if (totalChunks <= 1) return;
+      isPaused = !isPaused;
+      if (isPaused) {
+        clearInterval(qrAnimationTimer);
+        numpadContainer.style.display = 'flex';
+        qrContainer.style.maxWidth = "280px";
+        qrContainer.style.maxHeight = "280px";
+        isExpanded = false;
+        zoomBtn.style.color = "#E2E8F0";
+        zoomBtn.style.borderColor = "#48484A";
+        
+        calcBtn.style.color = "#10B981";
+        calcBtn.style.borderColor = "#10B981";
+        
+        let currentIndexDisplay = parseInt(counterLabel.innerText.split(' / ')[0]) - 1;
+        Array.from(numpadContainer.children).forEach((btn, idx) => {
+            if (idx === currentIndexDisplay) {
+                btn.style.backgroundColor = "#10B981";
+                btn.style.color = "#000000";
+            } else {
+                btn.style.backgroundColor = "#1C1C1E";
+                btn.style.color = "#E2E8F0";
+            }
+        });
+      } else {
+        numpadContainer.style.display = 'none';
+        qrAnimationTimer = setInterval(drawNextQR, 100);
+        calcBtn.style.color = "#E2E8F0";
+        calcBtn.style.borderColor = "#48484A";
+      }
+    };
+
     overlay.style.display = 'flex';
-
-    let indices = Array.from({length: totalChunks}, (_, i) => i);
-    const shuffleArray = (array) => {
-      for (let i = array.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [array[i], array[j]] = [array[j], array[i]];
-      }
-    };
-
-    let currentStep = 0;
-    const drawNextQR = () => {
-      if (currentStep === 0) {
-        shuffleArray(indices);
-      }
-      
-      let chunkIndex = indices[currentStep];
-      let payload = `QRX:${chunkIndex + 1}/${totalChunks}:${chunks[chunkIndex]}`;
-      
-      QRCode.toCanvas(canvas, payload, {
-        margin: 1,
-        version: 4, 
-        width: 800,
-        color: { dark: "#000000", light: "#ffffff" },
-        errorCorrectionLevel: 'L'
-      }, function (error) {
-        if (error) console.error("QR描画エラー:", error);
-      });
-      
-      counterLabel.innerText = `${chunkIndex + 1} / ${totalChunks}`;
-      
-      currentStep++;
-      if (currentStep >= totalChunks) {
-        currentStep = 0;
-      }
-    };
-
     drawNextQR();
     if (totalChunks > 1) {
       qrAnimationTimer = setInterval(drawNextQR, 100); 
