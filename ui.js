@@ -453,9 +453,8 @@ function openQROutputModal(index) {
     const totalChunks = chunks.length;
     
     overlay.innerHTML = ""; 
-    overlay.onclick = null; // 背景タップでのアクションを完全に無効化
+    overlay.onclick = null; 
     
-    // ★ヘッダーバー生成
     let headerBar = document.createElement('div');
     headerBar.style.cssText = "position: absolute; top: 0; left: 0; width: 100%; padding: 15px 20px; box-sizing: border-box; display: flex; justify-content: space-between; align-items: center; z-index: 10001;";
     
@@ -488,7 +487,6 @@ function openQROutputModal(index) {
     qrContainer.style.cssText = "width: 80vw; height: 80vw; max-width: 280px; max-height: 280px; background-color: #ffffff; border-radius: 12px; padding: 15px; box-sizing: border-box; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; overflow: hidden; position: relative; border: 10px solid #1C1C1E; transition: max-width 0.3s, max-height 0.3s; margin-top: 50px;";
     
     let canvas = document.createElement('canvas');
-    // ★QRのクリック判定を完全に消滅させ、マウスカーソルも乗らないようにする
     canvas.style.cssText = "width: 100% !important; height: 100% !important; max-width: 100% !important; max-height: 100% !important; object-fit: contain; display: block; pointer-events: none; transition: opacity 0.1s;";
     
     let counterLabel = document.createElement('div');
@@ -498,26 +496,69 @@ function openQROutputModal(index) {
     qrContainer.appendChild(counterLabel);
     overlay.appendChild(qrContainer);
 
-    let numpadContainer = document.createElement('div');
-    numpadContainer.style.cssText = "display: none; flex-wrap: wrap; gap: 8px; justify-content: center; max-width: 300px; margin-top: 20px;";
-    for (let i = 0; i < totalChunks; i++) {
-      let numBtn = document.createElement('button');
-      numBtn.innerText = i + 1;
-      numBtn.style.cssText = "width: 44px; height: 44px; background: #1C1C1E; color: #E2E8F0; border: 1px solid #333333; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer;";
-      numBtn.onclick = function(e) {
+    // ★追加：テキストボックス＋12キー固定テンキーのコンテナ
+    let manualInputContainer = document.createElement('div');
+    manualInputContainer.style.cssText = "display: none; flex-direction: column; align-items: center; gap: 10px; margin-top: 15px; width: 100%; max-width: 260px; z-index: 10001;";
+
+    let inputBox = document.createElement('input');
+    inputBox.type = "tel";
+    inputBox.inputMode = "numeric";
+    inputBox.pattern = "[0-9]*";
+    inputBox.placeholder = "1 ~ " + totalChunks;
+    inputBox.style.cssText = "width: 100%; height: 44px; background: #1C1C1E; color: #FFFFFF; border: 1px solid #48484A; border-radius: 8px; font-size: 20px; font-weight: bold; text-align: center; outline: none; box-sizing: border-box;";
+    inputBox.onclick = function(e) { e.stopPropagation(); };
+    
+    const handleManualInput = () => {
+      let val = parseInt(inputBox.value, 10);
+      if (isNaN(val)) return;
+      if (val < 1) val = 1;
+      if (val > totalChunks) val = totalChunks;
+      inputBox.value = val;
+      drawSpecificQR(val - 1);
+    };
+
+    inputBox.addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        handleManualInput();
+        inputBox.blur(); 
+      }
+    });
+
+    manualInputContainer.appendChild(inputBox);
+
+    let fixedNumpad = document.createElement('div');
+    fixedNumpad.style.cssText = "display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 100%;";
+
+    const keys = ['1','2','3','4','5','6','7','8','9','BS','0','GO'];
+    keys.forEach(key => {
+      let btn = document.createElement('button');
+      btn.innerText = key === 'BS' ? '?' : key;
+      btn.style.cssText = "height: 44px; background: #1C1C1E; color: #E2E8F0; border: 1px solid #333333; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center;";
+      
+      if (key === 'GO') {
+        btn.style.backgroundColor = "#10B981";
+        btn.style.color = "#000000";
+        btn.style.border = "none";
+      } else if (key === 'BS') {
+        btn.style.backgroundColor = "#2C2C2E";
+        btn.style.fontSize = "16px";
+      }
+
+      btn.onclick = function(e) {
         e.stopPropagation();
-        drawSpecificQR(i);
-        // タップした数字を強調表示
-        Array.from(numpadContainer.children).forEach(btn => {
-            btn.style.backgroundColor = "#1C1C1E";
-            btn.style.color = "#E2E8F0";
-        });
-        numBtn.style.backgroundColor = "#10B981";
-        numBtn.style.color = "#000000";
+        if (key === 'BS') {
+          inputBox.value = inputBox.value.slice(0, -1);
+        } else if (key === 'GO') {
+          handleManualInput();
+        } else {
+          inputBox.value += key;
+        }
       };
-      numpadContainer.appendChild(numBtn);
-    }
-    overlay.appendChild(numpadContainer);
+      fixedNumpad.appendChild(btn);
+    });
+    manualInputContainer.appendChild(fixedNumpad);
+    overlay.appendChild(manualInputContainer);
 
     let indices = Array.from({length: totalChunks}, (_, i) => i);
     const shuffleArray = (array) => {
@@ -529,12 +570,11 @@ function openQROutputModal(index) {
 
     let currentStep = 0;
     
-    // ★独立させた描画関数
     const drawSpecificQR = (index) => {
       let payload = `QRX:${index + 1}/${totalChunks}:${chunks[index]}`;
       QRCode.toCanvas(canvas, payload, {
         margin: 1,
-        version: 3, 
+        version: 4, 
         width: 800, 
         color: { dark: "#000000", light: "#ffffff" },
         errorCorrectionLevel: 'L'
@@ -561,11 +601,10 @@ function openQROutputModal(index) {
     let isExpanded = false;
     let isAnimating = false;
 
-    // ★虫眼鏡ボタンの処理
     zoomBtn.onclick = function(e) {
       e.stopPropagation();
       if (isAnimating) return;
-      if (isPaused) return; // 一時停止中は拡大縮小を無効化
+      if (isPaused) return; 
       
       isAnimating = true;
       isExpanded = !isExpanded;
@@ -595,15 +634,14 @@ function openQROutputModal(index) {
       }, 300);
     };
 
-    // ★計算機ボタンの処理
+    // ★修正：計算機ボタンクリックでテキスト＆固定テンキーを表示
     calcBtn.onclick = function(e) {
       e.stopPropagation();
       if (totalChunks <= 1) return;
       isPaused = !isPaused;
       if (isPaused) {
         clearInterval(qrAnimationTimer);
-        numpadContainer.style.display = 'flex';
-        // テンキーのスペース確保のため、強制的に小サイズに戻す
+        manualInputContainer.style.display = 'flex';
         qrContainer.style.maxWidth = "280px";
         qrContainer.style.maxHeight = "280px";
         isExpanded = false;
@@ -613,19 +651,11 @@ function openQROutputModal(index) {
         calcBtn.style.color = "#10B981";
         calcBtn.style.borderColor = "#10B981";
         
-        // 現在表示されているQRの番号を光らせる
-        let currentIndexDisplay = parseInt(counterLabel.innerText.split(' / ')[0]) - 1;
-        Array.from(numpadContainer.children).forEach((btn, idx) => {
-            if (idx === currentIndexDisplay) {
-                btn.style.backgroundColor = "#10B981";
-                btn.style.color = "#000000";
-            } else {
-                btn.style.backgroundColor = "#1C1C1E";
-                btn.style.color = "#E2E8F0";
-            }
-        });
+        // 現在表示されている番号をインプットにセット
+        let currentIndexDisplay = parseInt(counterLabel.innerText.split(' / ')[0]);
+        inputBox.value = currentIndexDisplay;
       } else {
-        numpadContainer.style.display = 'none';
+        manualInputContainer.style.display = 'none';
         qrAnimationTimer = setInterval(drawNextQR, 100);
         calcBtn.style.color = "#E2E8F0";
         calcBtn.style.borderColor = "#48484A";
@@ -754,25 +784,68 @@ function openCurrentMatchQRModal() {
     qrContainer.appendChild(counterLabel);
     overlay.appendChild(qrContainer);
 
-    let numpadContainer = document.createElement('div');
-    numpadContainer.style.cssText = "display: none; flex-wrap: wrap; gap: 8px; justify-content: center; max-width: 300px; margin-top: 20px;";
-    for (let i = 0; i < totalChunks; i++) {
-      let numBtn = document.createElement('button');
-      numBtn.innerText = i + 1;
-      numBtn.style.cssText = "width: 44px; height: 44px; background: #1C1C1E; color: #E2E8F0; border: 1px solid #333333; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer;";
-      numBtn.onclick = function(e) {
+    let manualInputContainer = document.createElement('div');
+    manualInputContainer.style.cssText = "display: none; flex-direction: column; align-items: center; gap: 10px; margin-top: 15px; width: 100%; max-width: 260px; z-index: 10001;";
+
+    let inputBox = document.createElement('input');
+    inputBox.type = "tel";
+    inputBox.inputMode = "numeric";
+    inputBox.pattern = "[0-9]*";
+    inputBox.placeholder = "1 ~ " + totalChunks;
+    inputBox.style.cssText = "width: 100%; height: 44px; background: #1C1C1E; color: #FFFFFF; border: 1px solid #48484A; border-radius: 8px; font-size: 20px; font-weight: bold; text-align: center; outline: none; box-sizing: border-box;";
+    inputBox.onclick = function(e) { e.stopPropagation(); };
+    
+    const handleManualInput = () => {
+      let val = parseInt(inputBox.value, 10);
+      if (isNaN(val)) return;
+      if (val < 1) val = 1;
+      if (val > totalChunks) val = totalChunks;
+      inputBox.value = val;
+      drawSpecificQR(val - 1);
+    };
+
+    inputBox.addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        handleManualInput();
+        inputBox.blur(); 
+      }
+    });
+
+    manualInputContainer.appendChild(inputBox);
+
+    let fixedNumpad = document.createElement('div');
+    fixedNumpad.style.cssText = "display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 100%;";
+
+    const keys = ['1','2','3','4','5','6','7','8','9','BS','0','GO'];
+    keys.forEach(key => {
+      let btn = document.createElement('button');
+      btn.innerText = key === 'BS' ? '?' : key;
+      btn.style.cssText = "height: 44px; background: #1C1C1E; color: #E2E8F0; border: 1px solid #333333; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center;";
+      
+      if (key === 'GO') {
+        btn.style.backgroundColor = "#10B981";
+        btn.style.color = "#000000";
+        btn.style.border = "none";
+      } else if (key === 'BS') {
+        btn.style.backgroundColor = "#2C2C2E";
+        btn.style.fontSize = "16px";
+      }
+
+      btn.onclick = function(e) {
         e.stopPropagation();
-        drawSpecificQR(i);
-        Array.from(numpadContainer.children).forEach(btn => {
-            btn.style.backgroundColor = "#1C1C1E";
-            btn.style.color = "#E2E8F0";
-        });
-        numBtn.style.backgroundColor = "#10B981";
-        numBtn.style.color = "#000000";
+        if (key === 'BS') {
+          inputBox.value = inputBox.value.slice(0, -1);
+        } else if (key === 'GO') {
+          handleManualInput();
+        } else {
+          inputBox.value += key;
+        }
       };
-      numpadContainer.appendChild(numBtn);
-    }
-    overlay.appendChild(numpadContainer);
+      fixedNumpad.appendChild(btn);
+    });
+    manualInputContainer.appendChild(fixedNumpad);
+    overlay.appendChild(manualInputContainer);
 
     let indices = Array.from({length: totalChunks}, (_, i) => i);
     const shuffleArray = (array) => {
@@ -788,8 +861,8 @@ function openCurrentMatchQRModal() {
       let payload = `QRX:${index + 1}/${totalChunks}:${chunks[index]}`;
       QRCode.toCanvas(canvas, payload, {
         margin: 1,
-        version: 3, 
-        width: 800,
+        version: 4, 
+        width: 800, 
         color: { dark: "#000000", light: "#ffffff" },
         errorCorrectionLevel: 'L'
       }, function (error) {
@@ -854,7 +927,7 @@ function openCurrentMatchQRModal() {
       isPaused = !isPaused;
       if (isPaused) {
         clearInterval(qrAnimationTimer);
-        numpadContainer.style.display = 'flex';
+        manualInputContainer.style.display = 'flex';
         qrContainer.style.maxWidth = "280px";
         qrContainer.style.maxHeight = "280px";
         isExpanded = false;
@@ -864,18 +937,10 @@ function openCurrentMatchQRModal() {
         calcBtn.style.color = "#10B981";
         calcBtn.style.borderColor = "#10B981";
         
-        let currentIndexDisplay = parseInt(counterLabel.innerText.split(' / ')[0]) - 1;
-        Array.from(numpadContainer.children).forEach((btn, idx) => {
-            if (idx === currentIndexDisplay) {
-                btn.style.backgroundColor = "#10B981";
-                btn.style.color = "#000000";
-            } else {
-                btn.style.backgroundColor = "#1C1C1E";
-                btn.style.color = "#E2E8F0";
-            }
-        });
+        let currentIndexDisplay = parseInt(counterLabel.innerText.split(' / ')[0]);
+        inputBox.value = currentIndexDisplay;
       } else {
-        numpadContainer.style.display = 'none';
+        manualInputContainer.style.display = 'none';
         qrAnimationTimer = setInterval(drawNextQR, 100);
         calcBtn.style.color = "#E2E8F0";
         calcBtn.style.borderColor = "#48484A";
@@ -969,25 +1034,68 @@ function generateStartMatchQR(matchData) {
     qrContainer.appendChild(counterLabel);
     overlay.appendChild(qrContainer);
 
-    let numpadContainer = document.createElement('div');
-    numpadContainer.style.cssText = "display: none; flex-wrap: wrap; gap: 8px; justify-content: center; max-width: 300px; margin-top: 20px;";
-    for (let i = 0; i < totalChunks; i++) {
-      let numBtn = document.createElement('button');
-      numBtn.innerText = i + 1;
-      numBtn.style.cssText = "width: 44px; height: 44px; background: #1C1C1E; color: #E2E8F0; border: 1px solid #333333; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer;";
-      numBtn.onclick = function(e) {
+    let manualInputContainer = document.createElement('div');
+    manualInputContainer.style.cssText = "display: none; flex-direction: column; align-items: center; gap: 10px; margin-top: 15px; width: 100%; max-width: 260px; z-index: 10001;";
+
+    let inputBox = document.createElement('input');
+    inputBox.type = "tel";
+    inputBox.inputMode = "numeric";
+    inputBox.pattern = "[0-9]*";
+    inputBox.placeholder = "1 ~ " + totalChunks;
+    inputBox.style.cssText = "width: 100%; height: 44px; background: #1C1C1E; color: #FFFFFF; border: 1px solid #48484A; border-radius: 8px; font-size: 20px; font-weight: bold; text-align: center; outline: none; box-sizing: border-box;";
+    inputBox.onclick = function(e) { e.stopPropagation(); };
+    
+    const handleManualInput = () => {
+      let val = parseInt(inputBox.value, 10);
+      if (isNaN(val)) return;
+      if (val < 1) val = 1;
+      if (val > totalChunks) val = totalChunks;
+      inputBox.value = val;
+      drawSpecificQR(val - 1);
+    };
+
+    inputBox.addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        handleManualInput();
+        inputBox.blur(); 
+      }
+    });
+
+    manualInputContainer.appendChild(inputBox);
+
+    let fixedNumpad = document.createElement('div');
+    fixedNumpad.style.cssText = "display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 100%;";
+
+    const keys = ['1','2','3','4','5','6','7','8','9','BS','0','GO'];
+    keys.forEach(key => {
+      let btn = document.createElement('button');
+      btn.innerText = key === 'BS' ? '?' : key;
+      btn.style.cssText = "height: 44px; background: #1C1C1E; color: #E2E8F0; border: 1px solid #333333; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center;";
+      
+      if (key === 'GO') {
+        btn.style.backgroundColor = "#10B981";
+        btn.style.color = "#000000";
+        btn.style.border = "none";
+      } else if (key === 'BS') {
+        btn.style.backgroundColor = "#2C2C2E";
+        btn.style.fontSize = "16px";
+      }
+
+      btn.onclick = function(e) {
         e.stopPropagation();
-        drawSpecificQR(i);
-        Array.from(numpadContainer.children).forEach(btn => {
-            btn.style.backgroundColor = "#1C1C1E";
-            btn.style.color = "#E2E8F0";
-        });
-        numBtn.style.backgroundColor = "#10B981";
-        numBtn.style.color = "#000000";
+        if (key === 'BS') {
+          inputBox.value = inputBox.value.slice(0, -1);
+        } else if (key === 'GO') {
+          handleManualInput();
+        } else {
+          inputBox.value += key;
+        }
       };
-      numpadContainer.appendChild(numBtn);
-    }
-    overlay.appendChild(numpadContainer);
+      fixedNumpad.appendChild(btn);
+    });
+    manualInputContainer.appendChild(fixedNumpad);
+    overlay.appendChild(manualInputContainer);
 
     let indices = Array.from({length: totalChunks}, (_, i) => i);
     const shuffleArray = (array) => {
@@ -1003,7 +1111,7 @@ function generateStartMatchQR(matchData) {
       let payload = `QRX:${index + 1}/${totalChunks}:${chunks[index]}`;
       QRCode.toCanvas(canvas, payload, {
         margin: 1,
-        version: 3, 
+        version: 4, 
         width: 800,
         color: { dark: "#000000", light: "#ffffff" },
         errorCorrectionLevel: 'L'
@@ -1069,7 +1177,7 @@ function generateStartMatchQR(matchData) {
       isPaused = !isPaused;
       if (isPaused) {
         clearInterval(qrAnimationTimer);
-        numpadContainer.style.display = 'flex';
+        manualInputContainer.style.display = 'flex';
         qrContainer.style.maxWidth = "280px";
         qrContainer.style.maxHeight = "280px";
         isExpanded = false;
@@ -1079,18 +1187,10 @@ function generateStartMatchQR(matchData) {
         calcBtn.style.color = "#10B981";
         calcBtn.style.borderColor = "#10B981";
         
-        let currentIndexDisplay = parseInt(counterLabel.innerText.split(' / ')[0]) - 1;
-        Array.from(numpadContainer.children).forEach((btn, idx) => {
-            if (idx === currentIndexDisplay) {
-                btn.style.backgroundColor = "#10B981";
-                btn.style.color = "#000000";
-            } else {
-                btn.style.backgroundColor = "#1C1C1E";
-                btn.style.color = "#E2E8F0";
-            }
-        });
+        let currentIndexDisplay = parseInt(counterLabel.innerText.split(' / ')[0]);
+        inputBox.value = currentIndexDisplay;
       } else {
-        numpadContainer.style.display = 'none';
+        manualInputContainer.style.display = 'none';
         qrAnimationTimer = setInterval(drawNextQR, 100);
         calcBtn.style.color = "#E2E8F0";
         calcBtn.style.borderColor = "#48484A";
