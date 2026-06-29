@@ -1,4 +1,4 @@
-﻿const CACHE_NAME = 'umpire_v28.0'; 
+﻿const CACHE_NAME = 'umpire_v28.2'; 
 const urlsToCache = [
   './',
   './index.html',
@@ -14,6 +14,8 @@ const urlsToCache = [
   './role.js',
   './history.js',
   './call.js',
+  './qr-scanner.js',
+  './qr-generator.js',
   './ui.js',
   './pdf.js',
   './recorder.js',

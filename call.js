@@ -94,7 +94,7 @@ function syncVolumeCallカンペ() {
       return;
   }
 
-  // ★修正：0-0時のコール。START CALL（公式戦）のON/OFF状態によって First game を付けるかどうかを厳密に判定
+  // ★0-0時のコール。START CALL（公式戦）のON/OFF状態によって First game を付けるかどうかを厳密に判定
   if (sL === 0 && sR === 0 && !isOver && !needsOverlay && !justAfterInterval) {
     let callEn = "";
     let callKana = "";
@@ -197,4 +197,84 @@ function syncVolumeCallカンペ() {
 
   document.getElementById("board-call-en").innerHTML = callEn;
   document.getElementById("board-call-kana").innerHTML = callKana;
+}
+
+// =========================================
+// 試合開始前のロングコール画面 制御
+// =========================================
+
+function showLongCallOverlay() {
+  const overlay = document.getElementById("long-call-overlay");
+  if (!overlay) return;
+
+  let rightTeamName = tR || "";
+  let leftTeamName = tL || "";
+  
+  let rightPlayersEn = flowIsDouble ? `'${nR1}' and '${nR2}'` : `'${nR1}'`;
+  let rightPlayersKana = flowIsDouble ? `『${nR1}』 アンド 『${nR2}』` : `『${nR1}』`;
+  let leftPlayersEn = flowIsDouble ? `'${nL1}' and '${nL2}'` : `'${nL1}'`;
+  let leftPlayersKana = flowIsDouble ? `『${nL1}』 アンド 『${nL2}』` : `『${nL1}』`;
+  
+  let rightTeamEn = rightTeamName ? `, ${rightTeamName}` : "";
+  let rightTeamKana = rightTeamName ? `、${rightTeamName}` : "";
+  let leftTeamEn = leftTeamName ? `, ${leftTeamName}` : "";
+  let leftTeamKana = leftTeamName ? `、${leftTeamName}` : "";
+
+  let serverName = "";
+  let receiverName = "";
+  if (!flowIsDouble) {
+      serverName = srvL ? nL1 : nR1;
+      receiverName = srvL ? nR1 : nL1;
+  } else {
+      let initialLPlayer = matchDefaultRole.initialLeftTeamSelectedPlayer || (pL1IsRight ? nL1 : nL2);
+      let initialRPlayer = matchDefaultRole.initialRightTeamSelectedPlayer || (pR1IsRight ? nR1 : nR2);
+      if (srvL) {
+          serverName = initialLPlayer;
+          receiverName = initialRPlayer;
+      } else {
+          serverName = initialRPlayer;
+          receiverName = initialLPlayer;
+      }
+  }
+
+  let serveCallEn = flowIsDouble ? `'${serverName}' to serve to '${receiverName}'` : `'${serverName}' to serve`;
+  let serveCallKana = flowIsDouble ? `『${serverName}』 トゥサーブ トゥ 『${receiverName}』` : `『${serverName}』 トゥサーブ`;
+
+  let callEn = `Ladies and Gentlemen;<br>on my right, ${rightPlayersEn}${rightTeamEn}; <br>and<br>on my left, ${leftPlayersEn}${leftTeamEn}.<br>${serveCallEn}; <br>Love All; Play.`;
+  let callKana = `レイディーズ アンド ジェントルメン、<br>オンマイライト、${rightPlayersKana}${rightTeamKana}、<br>アンド<br>オンマイレフト、${leftPlayersKana}${leftTeamKana}。<br>${serveCallKana}、<br>ラブオール；プレイ`;
+
+  document.getElementById("long-call-text-en").innerHTML = callEn;
+  document.getElementById("long-call-text-kana").innerHTML = callKana;
+
+  document.getElementById("game-flow-container").style.display = "none";
+  document.getElementById("board-ui").style.display = "none";
+  
+  overlay.style.display = "flex";
+}
+
+function closeLongCallOverlay() {
+  const overlay = document.getElementById("long-call-overlay");
+  if (overlay) overlay.style.display = "none";
+  
+  document.getElementById("board-ui").style.display = "flex";
+  
+  if (typeof syncBoardDOM === 'function') syncBoardDOM();
+  if (typeof saveActiveBackup === 'function') saveActiveBackup();
+}
+
+function backFromLongCallOverlay() {
+  const overlay = document.getElementById("long-call-overlay");
+  if (overlay) overlay.style.display = "none";
+  
+  if (flowIsDouble) {
+    isSelectingRoles = true;
+    document.getElementById("board-ui").style.display = "flex";
+    if (typeof initRoleSelectionOverlay === 'function') initRoleSelectionOverlay();
+    if (typeof syncBoardDOM === 'function') syncBoardDOM();
+  } else {
+    document.getElementById("board-ui").style.display = "none";
+    document.getElementById("game-flow-container").style.display = "flex";
+    flowStep = 3;
+    if (typeof renderFlow === 'function') renderFlow();
+  }
 }
