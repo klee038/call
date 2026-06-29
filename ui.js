@@ -3,9 +3,9 @@
 // =========================================
 
 /**
- * アプリ起動時の初期化処理
+ * アプリ起動時の初期化処理（Safari対策で確実に発火させる）
  */
-window.onload = function() {
+document.addEventListener('DOMContentLoaded', function() {
   if (typeof renderFlow === 'function') renderFlow();
   
   const rosterPlayerInput = document.getElementById('roster-player-name');
@@ -31,7 +31,7 @@ window.onload = function() {
       <button class="action-btn roster-cancel-btn" style="width: 100%; margin: 0 auto; display: block;" onclick="closePlayerSelectModal()">CANCEL</button>
     `;
   }
-};
+});
 
 /**
  * 得点板のDOM表示・エフェクト更新処理
@@ -203,6 +203,7 @@ function openQRScannerModal() {
   const wrapper = document.getElementById('qr-reader-wrapper');
   const spinner = document.getElementById('qr-loading-spinner');
   const dotsContainer = document.getElementById('qr-progress-dots');
+  let missingNumEl = document.getElementById('qr-missing-numbers');
   
   if (!overlay || !wrapper) return;
   
@@ -214,20 +215,12 @@ function openQRScannerModal() {
     dotsContainer.style.flexWrap = 'wrap'; 
   }
   
-  // ★安全対策：DOM爆破ではなく中身のクリアにとどめる（レイアウトクラッシュ対策）
+  if (missingNumEl) {
+    missingNumEl.innerText = '';
+  }
+  
   wrapper.innerHTML = `<div id="qr-reader" style="width: 100%; min-height: 250px; background-color: #000; border: 1px solid #333; border-radius: 8px;"></div>`;
   wrapper.style.display = 'block';
-  
-  // ★追加：動的テキストラベルの生成（DOMを重くしないよう、必要な時だけ生成）
-  let missingNumEl = document.getElementById('qr-missing-numbers-dynamic');
-  if (!missingNumEl) {
-      missingNumEl = document.createElement('div');
-      missingNumEl.id = 'qr-missing-numbers-dynamic';
-      missingNumEl.style.cssText = "color: rgba(255, 255, 255, 0.3); font-size: 15px; font-weight: bold; text-align: center; margin-bottom: 10px; min-height: 18px; letter-spacing: 1px;";
-      // wrapper の直前に挿入する
-      wrapper.parentNode.insertBefore(missingNumEl, wrapper);
-  }
-  missingNumEl.innerText = '';
   
   if (spinner) spinner.style.display = 'none';
   
@@ -238,7 +231,7 @@ function openQRScannerModal() {
     return;
   }
 
-  setTimeout(() => {
+  setTimeout(function() {
     if (overlay.style.display === 'none') return;
 
     if (html5QrCode) {
@@ -248,7 +241,7 @@ function openQRScannerModal() {
 
     html5QrCode = new Html5Qrcode("qr-reader");
 
-    const onScanSuccess = async (decodedText, decodedResult) => {
+    let onScanSuccess = async function(decodedText, decodedResult) {
       if (totalChunksExpected > 0 && scannedChunks.filter(Boolean).length === totalChunksExpected) return;
       if (!decodedText.startsWith("QRX:")) return;
 
@@ -264,9 +257,9 @@ function openQRScannerModal() {
         if (totalChunksExpected === 0) {
           totalChunksExpected = total;
           if (dotsContainer) {
-            dotsContainer.innerHTML = Array.from({length: total}, (_, i) => 
-              `<div id="qr-dot-${i}" style="width: 8px; height: 8px; border-radius: 50%; background-color: rgba(255,255,255,0.15); flex-shrink: 0;"></div>`
-            ).join('');
+            dotsContainer.innerHTML = Array.from({length: total}, function(_, i) {
+              return `<div id="qr-dot-${i}" style="width: 8px; height: 8px; border-radius: 50%; background-color: rgba(255,255,255,0.15); flex-shrink: 0;"></div>`;
+            }).join('');
           }
         }
 
@@ -276,7 +269,6 @@ function openQRScannerModal() {
           if (targetDot) targetDot.style.backgroundColor = '#10B981';
         }
 
-        // ★追加：未取得のフレーム番号の割り出しと25文字省略ロジック
         if (missingNumEl) {
           let missingNumbers = [];
           for (let i = 0; i < totalChunksExpected; i++) {
@@ -306,7 +298,7 @@ function openQRScannerModal() {
           
           if (missingNumEl) missingNumEl.innerText = "";
           
-          const stopCameraAndProcess = async () => {
+          let stopCameraAndProcess = async function() {
             if (html5QrCode) {
               try {
                 if (html5QrCode.isScanning) {
@@ -325,11 +317,11 @@ function openQRScannerModal() {
             
             if (spinner) spinner.style.display = 'flex';
 
-            setTimeout(() => {
+            setTimeout(function() {
               try {
                 let fullBase64 = scannedChunks.join('');
                 let binaryString = atob(fullBase64);
-                let charArray = binaryString.split('').map(c => c.charCodeAt(0));
+                let charArray = binaryString.split('').map(function(c) { return c.charCodeAt(0); });
                 let uint8Array = new Uint8Array(charArray);
 
                 let decompressedUint8 = pako.inflate(uint8Array);
@@ -363,7 +355,6 @@ function openQRScannerModal() {
 
     const cameraConfig = { facingMode: "environment" };
     
-    // ★修正：オートマクロ対応（レスポンシブなqrboxとアスペクト比の固定）
     const config = { 
       fps: 15,
       aspectRatio: 1.0,
@@ -375,7 +366,7 @@ function openQRScannerModal() {
     };
 
     html5QrCode.start(cameraConfig, config, onScanSuccess)
-      .catch(err => {
+      .catch(function(err) {
         alert("カメラの起動に失敗しました。ブラウザの許可を確認してください。");
         console.error(err);
         html5QrCode = null;
@@ -385,7 +376,7 @@ function openQRScannerModal() {
 }
 
 /**
- * キャンセル時：モーダルを閉じる際のカメラの完全破棄
+ * キャンセル時：モーダルを閉じる際のカメラの完全破棄と「DOMの完全爆破」
  */
 async function closeQRScannerModal() {
   const overlay = document.getElementById('qr-scanner-overlay');
@@ -410,11 +401,6 @@ async function closeQRScannerModal() {
   if (wrapper) {
       wrapper.innerHTML = "";
       wrapper.style.display = 'none';
-  }
-  
-  const missingNumEl = document.getElementById('qr-missing-numbers-dynamic');
-  if (missingNumEl) {
-      missingNumEl.remove();
   }
   
   const spinner = document.getElementById('qr-loading-spinner');
@@ -500,13 +486,13 @@ function openQROutputModal(index) {
     let contentWrapper = document.createElement('div');
     contentWrapper.style.cssText = "display: flex; flex-direction: column; align-items: center; margin-top: 50px;";
 
+    let statusLabel = document.createElement('div');
+    statusLabel.style.cssText = "color: #E2E8F0; font-size: 16px; font-weight: bold; letter-spacing: 1px; text-align: center; height: 20px; line-height: 20px; margin-bottom: 10px;";
+    contentWrapper.appendChild(statusLabel);
+
     let qrContainer = document.createElement('div');
     qrContainer.style.cssText = "width: 80vw; height: 80vw; max-width: 280px; max-height: 280px; background-color: #ffffff; border-radius: 12px; padding: 15px; box-sizing: border-box; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; overflow: hidden; position: relative; border: 10px solid #1C1C1E; transition: max-width 0.3s, max-height 0.3s;";
     
-    let statusLabel = document.createElement('div');
-    statusLabel.style.cssText = "position: absolute; top: 8px; left: 50%; transform: translateX(-50%); color: #000000; font-size: 12px; font-weight: bold; letter-spacing: 1px; z-index: 10;";
-    qrContainer.appendChild(statusLabel);
-
     let canvas = document.createElement('canvas');
     canvas.style.cssText = "width: 100% !important; height: 100% !important; max-width: 100% !important; max-height: 100% !important; object-fit: contain; display: block; pointer-events: none; transition: opacity 0.1s;";
     
@@ -530,13 +516,13 @@ function openQROutputModal(index) {
     inputBox.style.cssText = "width: 100%; height: 44px; background: #1C1C1E; color: #FFFFFF; border: 1px solid #48484A; border-radius: 8px; font-size: 20px; font-weight: bold; text-align: center; outline: none; box-sizing: border-box;";
     inputBox.onclick = function(e) { e.stopPropagation(); };
     
-    const handleManualInput = () => {
+    let handleManualInput = function() {
       let val = parseInt(inputBox.value, 10);
       if (isNaN(val)) return;
       if (val < 1) val = 1;
       if (val > totalChunks) val = totalChunks;
       drawSpecificQR(val - 1);
-      statusLabel.innerText = `${val}`; 
+      statusLabel.innerText = val; 
       inputBox.value = ""; 
     };
 
@@ -554,7 +540,7 @@ function openQROutputModal(index) {
     fixedNumpad.style.cssText = "display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 100%;";
 
     const keys = ['1','2','3','4','5','6','7','8','9','DEL','0','ENTER'];
-    keys.forEach(key => {
+    keys.forEach(function(key) {
       let btn = document.createElement('button');
       btn.innerText = key;
       
@@ -581,17 +567,20 @@ function openQROutputModal(index) {
     manualInputContainer.appendChild(fixedNumpad);
     overlay.appendChild(manualInputContainer);
 
-    let indices = Array.from({length: totalChunks}, (_, i) => i);
-    const shuffleArray = (array) => {
+    let indices = Array.from({length: totalChunks}, function(_, i) { return i; });
+    // ★Safari構想エラー対策：分割代入を使わず古典的にシャッフル
+    let shuffleArray = function(array) {
       for (let i = array.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [array[i], array[j]] = [array[j], array[i]];
+        let j = Math.floor(Math.random() * (i + 1));
+        let temp = array[i];
+        array[i] = array[j];
+        array[j] = temp;
       }
     };
 
     let currentStep = 0;
     
-    const drawSpecificQR = (index) => {
+    let drawSpecificQR = function(index) {
       let payload = `QRX:${index + 1}/${totalChunks}:${chunks[index]}`;
       QRCode.toCanvas(canvas, payload, {
         margin: 1,
@@ -605,7 +594,7 @@ function openQROutputModal(index) {
       counterLabel.innerText = `${index + 1} / ${totalChunks}`;
     };
 
-    const drawNextQR = () => {
+    let drawNextQR = function() {
       if (currentStep === 0) {
         shuffleArray(indices);
       }
@@ -645,7 +634,7 @@ function openQROutputModal(index) {
         zoomBtn.style.borderColor = "#48484A";
       }
 
-      setTimeout(() => {
+      setTimeout(function() {
         drawNextQR();
         canvas.style.opacity = "1";
         if (totalChunks > 1) {
@@ -672,7 +661,7 @@ function openQROutputModal(index) {
         calcBtn.style.borderColor = "#10B981";
         
         let currentIndexDisplay = parseInt(counterLabel.innerText.split(' / ')[0]);
-        statusLabel.innerText = `${currentIndexDisplay}`; 
+        statusLabel.innerText = currentIndexDisplay; 
         inputBox.value = ""; 
       } else {
         manualInputContainer.style.display = 'none';
@@ -825,13 +814,13 @@ function openCurrentMatchQRModal() {
     inputBox.style.cssText = "width: 100%; height: 44px; background: #1C1C1E; color: #FFFFFF; border: 1px solid #48484A; border-radius: 8px; font-size: 20px; font-weight: bold; text-align: center; outline: none; box-sizing: border-box;";
     inputBox.onclick = function(e) { e.stopPropagation(); };
     
-    const handleManualInput = () => {
+    let handleManualInput = function() {
       let val = parseInt(inputBox.value, 10);
       if (isNaN(val)) return;
       if (val < 1) val = 1;
       if (val > totalChunks) val = totalChunks;
       drawSpecificQR(val - 1);
-      statusLabel.innerText = `${val}`; 
+      statusLabel.innerText = val; 
       inputBox.value = ""; 
     };
 
@@ -849,7 +838,7 @@ function openCurrentMatchQRModal() {
     fixedNumpad.style.cssText = "display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 100%;";
 
     const keys = ['1','2','3','4','5','6','7','8','9','DEL','0','ENTER'];
-    keys.forEach(key => {
+    keys.forEach(function(key) {
       let btn = document.createElement('button');
       btn.innerText = key;
       
@@ -876,17 +865,19 @@ function openCurrentMatchQRModal() {
     manualInputContainer.appendChild(fixedNumpad);
     overlay.appendChild(manualInputContainer);
 
-    let indices = Array.from({length: totalChunks}, (_, i) => i);
-    const shuffleArray = (array) => {
+    let indices = Array.from({length: totalChunks}, function(_, i) { return i; });
+    let shuffleArray = function(array) {
       for (let i = array.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [array[i], array[j]] = [array[j], array[i]];
+        let j = Math.floor(Math.random() * (i + 1));
+        let temp = array[i];
+        array[i] = array[j];
+        array[j] = temp;
       }
     };
 
     let currentStep = 0;
     
-    const drawSpecificQR = (index) => {
+    let drawSpecificQR = function(index) {
       let payload = `QRX:${index + 1}/${totalChunks}:${chunks[index]}`;
       QRCode.toCanvas(canvas, payload, {
         margin: 1,
@@ -900,7 +891,7 @@ function openCurrentMatchQRModal() {
       counterLabel.innerText = `${index + 1} / ${totalChunks}`;
     };
 
-    const drawNextQR = () => {
+    let drawNextQR = function() {
       if (currentStep === 0) {
         shuffleArray(indices);
       }
@@ -940,7 +931,7 @@ function openCurrentMatchQRModal() {
         zoomBtn.style.borderColor = "#48484A";
       }
 
-      setTimeout(() => {
+      setTimeout(function() {
         drawNextQR();
         canvas.style.opacity = "1";
         if (totalChunks > 1) {
@@ -967,7 +958,7 @@ function openCurrentMatchQRModal() {
         calcBtn.style.borderColor = "#10B981";
         
         let currentIndexDisplay = parseInt(counterLabel.innerText.split(' / ')[0]);
-        statusLabel.innerText = `${currentIndexDisplay}`; 
+        statusLabel.innerText = currentIndexDisplay; 
         inputBox.value = ""; 
       } else {
         manualInputContainer.style.display = 'none';
@@ -1085,13 +1076,13 @@ function generateStartMatchQR(matchData) {
     inputBox.style.cssText = "width: 100%; height: 44px; background: #1C1C1E; color: #FFFFFF; border: 1px solid #48484A; border-radius: 8px; font-size: 20px; font-weight: bold; text-align: center; outline: none; box-sizing: border-box;";
     inputBox.onclick = function(e) { e.stopPropagation(); };
     
-    const handleManualInput = () => {
+    let handleManualInput = function() {
       let val = parseInt(inputBox.value, 10);
       if (isNaN(val)) return;
       if (val < 1) val = 1;
       if (val > totalChunks) val = totalChunks;
       drawSpecificQR(val - 1);
-      statusLabel.innerText = `${val}`; 
+      statusLabel.innerText = val; 
       inputBox.value = ""; 
     };
 
@@ -1109,7 +1100,7 @@ function generateStartMatchQR(matchData) {
     fixedNumpad.style.cssText = "display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 100%;";
 
     const keys = ['1','2','3','4','5','6','7','8','9','DEL','0','ENTER'];
-    keys.forEach(key => {
+    keys.forEach(function(key) {
       let btn = document.createElement('button');
       btn.innerText = key;
       
@@ -1136,17 +1127,19 @@ function generateStartMatchQR(matchData) {
     manualInputContainer.appendChild(fixedNumpad);
     overlay.appendChild(manualInputContainer);
 
-    let indices = Array.from({length: totalChunks}, (_, i) => i);
-    const shuffleArray = (array) => {
+    let indices = Array.from({length: totalChunks}, function(_, i) { return i; });
+    let shuffleArray = function(array) {
       for (let i = array.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [array[i], array[j]] = [array[j], array[i]];
+        let j = Math.floor(Math.random() * (i + 1));
+        let temp = array[i];
+        array[i] = array[j];
+        array[j] = temp;
       }
     };
 
     let currentStep = 0;
     
-    const drawSpecificQR = (index) => {
+    let drawSpecificQR = function(index) {
       let payload = `QRX:${index + 1}/${totalChunks}:${chunks[index]}`;
       QRCode.toCanvas(canvas, payload, {
         margin: 1,
@@ -1160,7 +1153,7 @@ function generateStartMatchQR(matchData) {
       counterLabel.innerText = `${index + 1} / ${totalChunks}`;
     };
 
-    const drawNextQR = () => {
+    let drawNextQR = function() {
       if (currentStep === 0) {
         shuffleArray(indices);
       }
@@ -1200,7 +1193,7 @@ function generateStartMatchQR(matchData) {
         zoomBtn.style.borderColor = "#48484A";
       }
 
-      setTimeout(() => {
+      setTimeout(function() {
         drawNextQR();
         canvas.style.opacity = "1";
         if (totalChunks > 1) {
@@ -1227,7 +1220,7 @@ function generateStartMatchQR(matchData) {
         calcBtn.style.borderColor = "#10B981";
         
         let currentIndexDisplay = parseInt(counterLabel.innerText.split(' / ')[0]);
-        statusLabel.innerText = `${currentIndexDisplay}`; 
+        statusLabel.innerText = currentIndexDisplay; 
         inputBox.value = ""; 
       } else {
         manualInputContainer.style.display = 'none';
