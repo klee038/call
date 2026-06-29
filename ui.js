@@ -2,9 +2,6 @@
 // 画面描画・UI更新処理 (ui.js)
 // =========================================
 
-/**
- * アプリ起動時の初期化処理（Safari対策で確実に発火させる）
- */
 document.addEventListener('DOMContentLoaded', function() {
   if (typeof renderFlow === 'function') renderFlow();
   
@@ -33,9 +30,6 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 });
 
-/**
- * 得点板のDOM表示・エフェクト更新処理
- */
 function syncBoardDOM() {
   let titleLText = getBoardSideName(true);
   let titleRText = getBoardSideName(false);
@@ -185,15 +179,10 @@ function syncBoardDOM() {
   }
 }
 
-// =========================================
-// 新設：ロングコール（公式戦コール）の専用画面表示処理
-// =========================================
-
 function showLongCallOverlay() {
   const overlay = document.getElementById("long-call-overlay");
   if (!overlay) return;
 
-  // 主審から見て右(Right)と左(Left)のチームを特定
   let rightTeamName = tR || "";
   let leftTeamName = tL || "";
   
@@ -207,7 +196,6 @@ function showLongCallOverlay() {
   let leftTeamEn = leftTeamName ? `, ${leftTeamName}` : "";
   let leftTeamKana = leftTeamName ? `、${leftTeamName}` : "";
 
-  // サーバー・レシーバーの特定
   let serverName = "";
   let receiverName = "";
   if (!flowIsDouble) {
@@ -228,7 +216,6 @@ function showLongCallOverlay() {
   let serveCallEn = flowIsDouble ? `'${serverName}' to serve to '${receiverName}'` : `'${serverName}' to serve`;
   let serveCallKana = flowIsDouble ? `『${serverName}』 トゥサーブ トゥ 『${receiverName}』` : `『${serverName}』 トゥサーブ`;
 
-  // テキストの構築（指定位置での改行）
   let callEn = `Ladies and Gentlemen;<br>on my right, ${rightPlayersEn}${rightTeamEn}; <br>and<br>on my left, ${leftPlayersEn}${leftTeamEn}.<br>${serveCallEn}; <br>Love All; Play.`;
   let callKana = `レイディーズ アンド ジェントルメン、<br>オンマイライト、${rightPlayersKana}${rightTeamKana}、<br>アンド<br>オンマイレフト、${leftPlayersKana}${leftTeamKana}。<br>${serveCallKana}、<br>ラブオール；プレイ`;
 
@@ -251,26 +238,22 @@ function closeLongCallOverlay() {
   if (typeof saveActiveBackup === 'function') saveActiveBackup();
 }
 
-// ★追加：START CALL画面からのBACK処理
 function backFromLongCallOverlay() {
   const overlay = document.getElementById("long-call-overlay");
   if (overlay) overlay.style.display = "none";
   
   if (flowIsDouble) {
-    // ダブルスの場合は陣形選択に戻る
     isSelectingRoles = true;
     document.getElementById("board-ui").style.display = "flex";
     if (typeof initRoleSelectionOverlay === 'function') initRoleSelectionOverlay();
     if (typeof syncBoardDOM === 'function') syncBoardDOM();
   } else {
-    // シングルスの場合はTOSS画面（flowStep=3）に戻る
     document.getElementById("board-ui").style.display = "none";
     document.getElementById("game-flow-container").style.display = "flex";
     flowStep = 3;
     if (typeof renderFlow === 'function') renderFlow();
   }
 }
-
 
 // =========================================
 // アニメーションQR（分割送受信）と圧縮/解凍ロジック
@@ -282,9 +265,6 @@ let qrAnimationTimer = null;
 let scannedChunks = [];
 let totalChunksExpected = 0;
 
-/**
- * 【入力側】QRスキャナーモーダルを開き、カメラを起動する
- */
 function openQRScannerModal() {
   const overlay = document.getElementById('qr-scanner-overlay');
   const wrapper = document.getElementById('qr-reader-wrapper');
@@ -466,9 +446,6 @@ function openQRScannerModal() {
   }, 300);
 }
 
-/**
- * キャンセル時：モーダルを閉じる際のカメラの完全破棄
- */
 async function closeQRScannerModal() {
   const overlay = document.getElementById('qr-scanner-overlay');
   const wrapper = document.getElementById('qr-reader-wrapper');
@@ -503,9 +480,6 @@ async function closeQRScannerModal() {
   if (spinner) spinner.style.display = 'none';
 }
 
-/**
- * 【出力側】ダイレクトQR表示（履歴一覧から一発表示）
- */
 function openQROutputModal(index) {
   const overlay = document.getElementById('qr-direct-overlay');
   if (!overlay) return;
@@ -583,11 +557,10 @@ function openQROutputModal(index) {
     contentWrapper.style.cssText = "display: flex; flex-direction: column; align-items: center; margin-top: 50px;";
 
     let qrContainer = document.createElement('div');
-    qrContainer.style.cssText = "width: 80vw; height: 80vw; max-width: 280px; max-height: 280px; background-color: #ffffff; border-radius: 12px; padding: 15px; box-sizing: border-box; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; overflow: hidden; position: relative; border: 10px solid #1C1C1E; transition: max-width 0.3s, max-height 0.3s;";
+    qrContainer.style.cssText = "width: 80vw; height: 80vw; max-width: 280px; max-height: 280px; background-color: #ffffff; border-radius: 12px; padding: 15px; box-sizing: border-box; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; position: relative; border: 10px solid #1C1C1E; transition: max-width 0.3s, max-height 0.3s;";
     
     let statusLabel = document.createElement('div');
-    statusLabel.style.cssText = "position: absolute; top: 8px; left: 50%; transform: translateX(-50%); color: #000000; font-size: 12px; font-weight: bold; letter-spacing: 1px; z-index: 10;";
-    qrContainer.appendChild(statusLabel);
+    statusLabel.style.cssText = "position: absolute; top: -35px; left: 50%; transform: translateX(-50%); color: #E2E8F0; font-size: 24px; font-weight: bold; font-family: sans-serif; pointer-events: none; z-index: 10002;";
 
     let canvas = document.createElement('canvas');
     canvas.style.cssText = "width: 100% !important; height: 100% !important; max-width: 100% !important; max-height: 100% !important; object-fit: contain; display: block; pointer-events: none; transition: opacity 0.1s;";
@@ -597,6 +570,7 @@ function openQROutputModal(index) {
     
     qrContainer.appendChild(canvas);
     qrContainer.appendChild(counterLabel);
+    qrContainer.appendChild(statusLabel);
     contentWrapper.appendChild(qrContainer);
     
     overlay.appendChild(contentWrapper);
@@ -880,11 +854,10 @@ function openCurrentMatchQRModal() {
     contentWrapper.style.cssText = "display: flex; flex-direction: column; align-items: center; margin-top: 50px;";
 
     let qrContainer = document.createElement('div');
-    qrContainer.style.cssText = "width: 80vw; height: 80vw; max-width: 280px; max-height: 280px; background-color: #ffffff; border-radius: 12px; padding: 15px; box-sizing: border-box; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; overflow: hidden; position: relative; border: 10px solid #1C1C1E; transition: max-width 0.3s, max-height 0.3s;";
+    qrContainer.style.cssText = "width: 80vw; height: 80vw; max-width: 280px; max-height: 280px; background-color: #ffffff; border-radius: 12px; padding: 15px; box-sizing: border-box; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; position: relative; border: 10px solid #1C1C1E; transition: max-width 0.3s, max-height 0.3s;";
     
     let statusLabel = document.createElement('div');
-    statusLabel.style.cssText = "position: absolute; top: 8px; left: 50%; transform: translateX(-50%); color: #000000; font-size: 12px; font-weight: bold; letter-spacing: 1px; z-index: 10;";
-    qrContainer.appendChild(statusLabel);
+    statusLabel.style.cssText = "position: absolute; top: -35px; left: 50%; transform: translateX(-50%); color: #E2E8F0; font-size: 24px; font-weight: bold; font-family: sans-serif; pointer-events: none; z-index: 10002;";
 
     let canvas = document.createElement('canvas');
     canvas.style.cssText = "width: 100% !important; height: 100% !important; max-width: 100% !important; max-height: 100% !important; object-fit: contain; display: block; pointer-events: none; transition: opacity 0.1s;";
@@ -894,6 +867,7 @@ function openCurrentMatchQRModal() {
     
     qrContainer.appendChild(canvas);
     qrContainer.appendChild(counterLabel);
+    qrContainer.appendChild(statusLabel);
     contentWrapper.appendChild(qrContainer);
     
     overlay.appendChild(contentWrapper);
@@ -1142,11 +1116,10 @@ function generateStartMatchQR(matchData) {
     contentWrapper.style.cssText = "display: flex; flex-direction: column; align-items: center; margin-top: 50px;";
 
     let qrContainer = document.createElement('div');
-    qrContainer.style.cssText = "width: 80vw; height: 80vw; max-width: 280px; max-height: 280px; background-color: #ffffff; border-radius: 12px; padding: 15px; box-sizing: border-box; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; overflow: hidden; position: relative; border: 10px solid #1C1C1E; transition: max-width 0.3s, max-height 0.3s;";
+    qrContainer.style.cssText = "width: 80vw; height: 80vw; max-width: 280px; max-height: 280px; background-color: #ffffff; border-radius: 12px; padding: 15px; box-sizing: border-box; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; position: relative; border: 10px solid #1C1C1E; transition: max-width 0.3s, max-height 0.3s;";
     
     let statusLabel = document.createElement('div');
-    statusLabel.style.cssText = "position: absolute; top: 8px; left: 50%; transform: translateX(-50%); color: #000000; font-size: 12px; font-weight: bold; letter-spacing: 1px; z-index: 10;";
-    qrContainer.appendChild(statusLabel);
+    statusLabel.style.cssText = "position: absolute; top: -35px; left: 50%; transform: translateX(-50%); color: #E2E8F0; font-size: 24px; font-weight: bold; font-family: sans-serif; pointer-events: none; z-index: 10002;";
 
     let canvas = document.createElement('canvas');
     canvas.style.cssText = "width: 100% !important; height: 100% !important; max-width: 100% !important; max-height: 100% !important; object-fit: contain; display: block; pointer-events: none; transition: opacity 0.1s;";
@@ -1156,6 +1129,7 @@ function generateStartMatchQR(matchData) {
     
     qrContainer.appendChild(canvas);
     qrContainer.appendChild(counterLabel);
+    qrContainer.appendChild(statusLabel);
     contentWrapper.appendChild(qrContainer);
     
     overlay.appendChild(contentWrapper);

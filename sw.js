@@ -1,4 +1,4 @@
-﻿const CACHE_NAME = 'umpire_v27.5'; 
+﻿const CACHE_NAME = 'umpire_v28.0'; 
 const urlsToCache = [
   './',
   './index.html',
@@ -7,9 +7,9 @@ const urlsToCache = [
   './roster.js',
   './game.js',
   './setup.js',
-  './setup-ui.js', // ★追加
-  './settings.js', // ★追加
-  './receive.js',  // ★追加
+  './setup-ui.js',
+  './settings.js',
+  './receive.js',
   './toss.js',
   './role.js',
   './history.js',
