@@ -186,6 +186,93 @@ function syncBoardDOM() {
 }
 
 // =========================================
+// 新設：ロングコール（公式戦コール）の専用画面表示処理
+// =========================================
+
+function showLongCallOverlay() {
+  const overlay = document.getElementById("long-call-overlay");
+  if (!overlay) return;
+
+  // 主審から見て右(Right)と左(Left)のチームを特定
+  let rightTeamName = tR || "";
+  let leftTeamName = tL || "";
+  
+  let rightPlayersEn = flowIsDouble ? `'${nR1}' and '${nR2}'` : `'${nR1}'`;
+  let rightPlayersKana = flowIsDouble ? `『${nR1}』 アンド 『${nR2}』` : `『${nR1}』`;
+  let leftPlayersEn = flowIsDouble ? `'${nL1}' and '${nL2}'` : `'${nL1}'`;
+  let leftPlayersKana = flowIsDouble ? `『${nL1}』 アンド 『${nL2}』` : `『${nL1}』`;
+  
+  let rightTeamEn = rightTeamName ? `, ${rightTeamName}` : "";
+  let rightTeamKana = rightTeamName ? `、${rightTeamName}` : "";
+  let leftTeamEn = leftTeamName ? `, ${leftTeamName}` : "";
+  let leftTeamKana = leftTeamName ? `、${leftTeamName}` : "";
+
+  // サーバー・レシーバーの特定
+  let serverName = "";
+  let receiverName = "";
+  if (!flowIsDouble) {
+      serverName = srvL ? nL1 : nR1;
+      receiverName = srvL ? nR1 : nL1;
+  } else {
+      let initialLPlayer = matchDefaultRole.initialLeftTeamSelectedPlayer || (pL1IsRight ? nL1 : nL2);
+      let initialRPlayer = matchDefaultRole.initialRightTeamSelectedPlayer || (pR1IsRight ? nR1 : nR2);
+      if (srvL) {
+          serverName = initialLPlayer;
+          receiverName = initialRPlayer;
+      } else {
+          serverName = initialRPlayer;
+          receiverName = initialLPlayer;
+      }
+  }
+
+  let serveCallEn = flowIsDouble ? `'${serverName}' to serve to '${receiverName}'` : `'${serverName}' to serve`;
+  let serveCallKana = flowIsDouble ? `『${serverName}』 トゥサーブ トゥ 『${receiverName}』` : `『${serverName}』 トゥサーブ`;
+
+  // テキストの構築（指定位置での改行）
+  let callEn = `Ladies and Gentlemen;<br>on my right, ${rightPlayersEn}${rightTeamEn}; <br>and<br>on my left, ${leftPlayersEn}${leftTeamEn}.<br>${serveCallEn}; <br>Love All; Play.`;
+  let callKana = `レイディーズ アンド ジェントルメン、<br>オンマイライト、${rightPlayersKana}${rightTeamKana}、<br>アンド<br>オンマイレフト、${leftPlayersKana}${leftTeamKana}。<br>${serveCallKana}、<br>ラブオール；プレイ`;
+
+  document.getElementById("long-call-text-en").innerHTML = callEn;
+  document.getElementById("long-call-text-kana").innerHTML = callKana;
+
+  document.getElementById("game-flow-container").style.display = "none";
+  document.getElementById("board-ui").style.display = "none";
+  
+  overlay.style.display = "flex";
+}
+
+function closeLongCallOverlay() {
+  const overlay = document.getElementById("long-call-overlay");
+  if (overlay) overlay.style.display = "none";
+  
+  document.getElementById("board-ui").style.display = "flex";
+  
+  if (typeof syncBoardDOM === 'function') syncBoardDOM();
+  if (typeof saveActiveBackup === 'function') saveActiveBackup();
+}
+
+// ★追加：START CALL画面からのBACK処理
+function backFromLongCallOverlay() {
+  const overlay = document.getElementById("long-call-overlay");
+  if (overlay) overlay.style.display = "none";
+  
+  if (flowIsDouble) {
+    // ダブルスの場合は陣形選択に戻る
+    isSelectingRoles = true;
+    document.getElementById("board-ui").style.display = "flex";
+    if (typeof initRoleSelectionOverlay === 'function') initRoleSelectionOverlay();
+    if (typeof syncBoardDOM === 'function') syncBoardDOM();
+  } else {
+    // シングルスの場合はTOSS画面（flowStep=3）に戻る
+    document.getElementById("board-ui").style.display = "none";
+    document.getElementById("game-flow-container").style.display = "flex";
+    flowStep = 3;
+    if (typeof renderFlow === 'function') renderFlow();
+  }
+}
+
+
+// =========================================
 // アニメーションQR（分割送受信）と圧縮/解凍ロジック
 // =========================================
 
@@ -203,7 +290,6 @@ function openQRScannerModal() {
   const wrapper = document.getElementById('qr-reader-wrapper');
   const spinner = document.getElementById('qr-loading-spinner');
   const dotsContainer = document.getElementById('qr-progress-dots');
-  let missingNumEl = document.getElementById('qr-missing-numbers');
   
   if (!overlay || !wrapper) return;
   
@@ -215,12 +301,17 @@ function openQRScannerModal() {
     dotsContainer.style.flexWrap = 'wrap'; 
   }
   
-  if (missingNumEl) {
-    missingNumEl.innerText = '';
-  }
-  
   wrapper.innerHTML = `<div id="qr-reader" style="width: 100%; min-height: 250px; background-color: #000; border: 1px solid #333; border-radius: 8px;"></div>`;
   wrapper.style.display = 'block';
+  
+  let missingNumEl = document.getElementById('qr-missing-numbers-dynamic');
+  if (!missingNumEl) {
+      missingNumEl = document.createElement('div');
+      missingNumEl.id = 'qr-missing-numbers-dynamic';
+      missingNumEl.style.cssText = "color: rgba(255, 255, 255, 0.3); font-size: 15px; font-weight: bold; text-align: center; margin-bottom: 10px; min-height: 18px; letter-spacing: 1px;";
+      wrapper.parentNode.insertBefore(missingNumEl, wrapper);
+  }
+  missingNumEl.innerText = '';
   
   if (spinner) spinner.style.display = 'none';
   
@@ -376,7 +467,7 @@ function openQRScannerModal() {
 }
 
 /**
- * キャンセル時：モーダルを閉じる際のカメラの完全破棄と「DOMの完全爆破」
+ * キャンセル時：モーダルを閉じる際のカメラの完全破棄
  */
 async function closeQRScannerModal() {
   const overlay = document.getElementById('qr-scanner-overlay');
@@ -401,6 +492,11 @@ async function closeQRScannerModal() {
   if (wrapper) {
       wrapper.innerHTML = "";
       wrapper.style.display = 'none';
+  }
+  
+  const missingNumEl = document.getElementById('qr-missing-numbers-dynamic');
+  if (missingNumEl) {
+      missingNumEl.remove();
   }
   
   const spinner = document.getElementById('qr-loading-spinner');
@@ -486,13 +582,13 @@ function openQROutputModal(index) {
     let contentWrapper = document.createElement('div');
     contentWrapper.style.cssText = "display: flex; flex-direction: column; align-items: center; margin-top: 50px;";
 
-    let statusLabel = document.createElement('div');
-    statusLabel.style.cssText = "color: #E2E8F0; font-size: 16px; font-weight: bold; letter-spacing: 1px; text-align: center; height: 20px; line-height: 20px; margin-bottom: 10px;";
-    contentWrapper.appendChild(statusLabel);
-
     let qrContainer = document.createElement('div');
     qrContainer.style.cssText = "width: 80vw; height: 80vw; max-width: 280px; max-height: 280px; background-color: #ffffff; border-radius: 12px; padding: 15px; box-sizing: border-box; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; overflow: hidden; position: relative; border: 10px solid #1C1C1E; transition: max-width 0.3s, max-height 0.3s;";
     
+    let statusLabel = document.createElement('div');
+    statusLabel.style.cssText = "position: absolute; top: 8px; left: 50%; transform: translateX(-50%); color: #000000; font-size: 12px; font-weight: bold; letter-spacing: 1px; z-index: 10;";
+    qrContainer.appendChild(statusLabel);
+
     let canvas = document.createElement('canvas');
     canvas.style.cssText = "width: 100% !important; height: 100% !important; max-width: 100% !important; max-height: 100% !important; object-fit: contain; display: block; pointer-events: none; transition: opacity 0.1s;";
     
@@ -568,7 +664,6 @@ function openQROutputModal(index) {
     overlay.appendChild(manualInputContainer);
 
     let indices = Array.from({length: totalChunks}, function(_, i) { return i; });
-    // ★Safari構想エラー対策：分割代入を使わず古典的にシャッフル
     let shuffleArray = function(array) {
       for (let i = array.length - 1; i > 0; i--) {
         let j = Math.floor(Math.random() * (i + 1));
@@ -784,13 +879,13 @@ function openCurrentMatchQRModal() {
     let contentWrapper = document.createElement('div');
     contentWrapper.style.cssText = "display: flex; flex-direction: column; align-items: center; margin-top: 50px;";
 
-    let statusLabel = document.createElement('div');
-    statusLabel.style.cssText = "color: #E2E8F0; font-size: 16px; font-weight: bold; letter-spacing: 1px; text-align: center; height: 20px; line-height: 20px; margin-bottom: 10px;";
-    contentWrapper.appendChild(statusLabel);
-
     let qrContainer = document.createElement('div');
     qrContainer.style.cssText = "width: 80vw; height: 80vw; max-width: 280px; max-height: 280px; background-color: #ffffff; border-radius: 12px; padding: 15px; box-sizing: border-box; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; overflow: hidden; position: relative; border: 10px solid #1C1C1E; transition: max-width 0.3s, max-height 0.3s;";
     
+    let statusLabel = document.createElement('div');
+    statusLabel.style.cssText = "position: absolute; top: 8px; left: 50%; transform: translateX(-50%); color: #000000; font-size: 12px; font-weight: bold; letter-spacing: 1px; z-index: 10;";
+    qrContainer.appendChild(statusLabel);
+
     let canvas = document.createElement('canvas');
     canvas.style.cssText = "width: 100% !important; height: 100% !important; max-width: 100% !important; max-height: 100% !important; object-fit: contain; display: block; pointer-events: none; transition: opacity 0.1s;";
     
@@ -1046,13 +1141,13 @@ function generateStartMatchQR(matchData) {
     let contentWrapper = document.createElement('div');
     contentWrapper.style.cssText = "display: flex; flex-direction: column; align-items: center; margin-top: 50px;";
 
-    let statusLabel = document.createElement('div');
-    statusLabel.style.cssText = "color: #E2E8F0; font-size: 16px; font-weight: bold; letter-spacing: 1px; text-align: center; height: 20px; line-height: 20px; margin-bottom: 10px;";
-    contentWrapper.appendChild(statusLabel);
-
     let qrContainer = document.createElement('div');
     qrContainer.style.cssText = "width: 80vw; height: 80vw; max-width: 280px; max-height: 280px; background-color: #ffffff; border-radius: 12px; padding: 15px; box-sizing: border-box; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; overflow: hidden; position: relative; border: 10px solid #1C1C1E; transition: max-width 0.3s, max-height 0.3s;";
     
+    let statusLabel = document.createElement('div');
+    statusLabel.style.cssText = "position: absolute; top: 8px; left: 50%; transform: translateX(-50%); color: #000000; font-size: 12px; font-weight: bold; letter-spacing: 1px; z-index: 10;";
+    qrContainer.appendChild(statusLabel);
+
     let canvas = document.createElement('canvas');
     canvas.style.cssText = "width: 100% !important; height: 100% !important; max-width: 100% !important; max-height: 100% !important; object-fit: contain; display: block; pointer-events: none; transition: opacity 0.1s;";
     

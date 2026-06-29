@@ -122,7 +122,6 @@ function finalizeAndStart() {
 
   pL1IsRight = pR1IsRight = true; 
   document.getElementById("game-flow-container").style.display = "none";
-  document.getElementById("board-ui").style.display = "flex";
 
   tL = tL ? tL.trim() : "";
   tR = tR ? tR.trim() : "";
@@ -131,16 +130,29 @@ function finalizeAndStart() {
     Recorder.initMatch(flowIsDouble, tL, tR, nL1, nL2, nR1, nR2);
   }
 
+  // ★修正：シングルスの場合は、ここで得点板に行く前にロングコール画面を判定して挟む
   if (!flowIsDouble) {
     if (typeof Recorder !== 'undefined') {
       let sName = srvL ? nL1 : nR1;
       let rName = srvL ? nR1 : nL1;
       Recorder.recordFirstSR(gL + gR, sName, rName);
     }
-  }
-
-  if (isSelectingRoles) {
-    if (typeof initRoleSelectionOverlay === 'function') initRoleSelectionOverlay();
+    
+    if (typeof flowIsOfficialCall !== 'undefined' && flowIsOfficialCall && gL === 0 && gR === 0) {
+      if (typeof showLongCallOverlay === 'function') {
+        showLongCallOverlay();
+      } else {
+        document.getElementById("board-ui").style.display = "flex";
+      }
+    } else {
+      document.getElementById("board-ui").style.display = "flex";
+    }
+  } else {
+    // ダブルスの場合は、とりあえずボードUIを見せて陣形選択へ
+    document.getElementById("board-ui").style.display = "flex";
+    if (isSelectingRoles) {
+      if (typeof initRoleSelectionOverlay === 'function') initRoleSelectionOverlay();
+    }
   }
   
   if (typeof syncBoardDOM === 'function') syncBoardDOM();

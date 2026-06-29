@@ -49,7 +49,7 @@ function initRoleSelectionOverlay() {
     if (p1S_R) { if (pR1IsRight) boxFarClassR = "server"; else boxNearClassR = "server"; } 
     else       { if (pR1IsRight) boxNearClassR = "server"; else boxFarClassR = "server"; }
     if (boxNearClassR === "server") boxFarClassL = "receiver";
-    else if (boxFarClassR === "server") boxNearClassL = "receiver";
+    else if (boxNearClassR === "server") boxNearClassL = "receiver";
   }
 
   let dispTL = tL ? tL : "&nbsp;";
@@ -111,7 +111,6 @@ function toggleRole(side) {
 }
 
 function confirmRoles() {
-  // ★修正：第1ゲームの0-0の時だけ絶対原点として記憶する（2ゲーム目以降は上書きさせない）
   if (sL === 0 && sR === 0 && gL === 0 && gR === 0) {
     let selL = pL1IsRight ? nL1 : nL2;
     let selR = pR1IsRight ? nR1 : nR2;
@@ -147,6 +146,17 @@ function confirmRoles() {
   isSelectingRoles = false;
   const overlay = document.getElementById("role-selection-overlay");
   if (overlay) overlay.style.display = "none";
-  if (typeof syncBoardDOM === 'function') syncBoardDOM();
+  
+  // ★修正：ダブルスでも、第1ゲーム開始時かつ公式戦モードならロングコール画面を挟む
+  if (typeof flowIsOfficialCall !== 'undefined' && flowIsOfficialCall && gL === 0 && gR === 0) {
+      if (typeof showLongCallOverlay === 'function') {
+          showLongCallOverlay();
+      } else {
+          if (typeof syncBoardDOM === 'function') syncBoardDOM();
+      }
+  } else {
+      if (typeof syncBoardDOM === 'function') syncBoardDOM();
+  }
+
   if (typeof saveActiveBackup === 'function') saveActiveBackup();
 }
