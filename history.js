@@ -354,11 +354,8 @@ function resumeMatchFromState(state) {
   gL = state.gL || 0; gR = state.gR || 0;
   srvL = state.hasOwnProperty('srvL') ? state.srvL : true;
   
-  // 過去の1枠仕様(tL/tR)からの復元互換
-  tL1 = state.tL1 !== undefined ? state.tL1 : (state.tL || "");
-  tL2 = state.tL2 !== undefined ? state.tL2 : (state.tL || "");
-  tR1 = state.tR1 !== undefined ? state.tR1 : (state.tR || "");
-  tR2 = state.tR2 !== undefined ? state.tR2 : (state.tR || "");
+  tL1 = state.tL1 || ""; tL2 = state.tL2 || "";
+  tR1 = state.tR1 || ""; tR2 = state.tR2 || "";
   
   nL1 = state.nL1 || ""; nL2 = state.nL2 || "";
   nR1 = state.nR1 || ""; nR2 = state.nR2 || "";
@@ -373,10 +370,9 @@ function resumeMatchFromState(state) {
   shownCountL = state.shownCountL || (state.cL || 0); shownCountR = state.shownCountR || (state.cR || 0);
   justAfterInterval = state.justAfterInterval || (state.jai || false);
   
-  initialTL1 = state.initialTL1 !== undefined ? state.initialTL1 : (state.initialTL || ""); 
-  initialTL2 = state.initialTL2 !== undefined ? state.initialTL2 : (state.initialTL || ""); 
-  initialTR1 = state.initialTR1 !== undefined ? state.initialTR1 : (state.initialTR || ""); 
-  initialTR2 = state.initialTR2 !== undefined ? state.initialTR2 : (state.initialTR || ""); 
+  initialTL1 = state.initialTL1 || ""; initialTL2 = state.initialTL2 || "";
+  initialTR1 = state.initialTR1 || ""; initialTR2 = state.initialTR2 || "";
+  
   initialNL1 = state.initialNL1 || "";
   initialNL2 = state.initialNL2 || "";
   initialNR1 = state.initialNR1 || "";
