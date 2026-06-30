@@ -172,7 +172,8 @@ function generateAndShowQRSequence(dataObject, overlay) {
   qrContainer.style.cssText = "width: 80vw; height: 80vw; max-width: 280px; max-height: 280px; background-color: #ffffff; border-radius: 12px; padding: 15px; box-sizing: border-box; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; position: relative; border: 10px solid #1C1C1E; transition: max-width 0.3s, max-height 0.3s;";
   
   let statusLabel = document.createElement('div');
-  statusLabel.style.cssText = "position: absolute; top: -35px; left: 50%; transform: translateX(-50%); color: #E2E8F0; font-size: 24px; font-weight: bold; font-family: sans-serif; pointer-events: none; z-index: 10002;";
+  // ★修正箇所：フォントサイズを 16px に小さくし、位置(top)を調整
+  statusLabel.style.cssText = "position: absolute; top: -25px; left: 50%; transform: translateX(-50%); color: #E2E8F0; font-size: 16px; font-weight: bold; font-family: sans-serif; pointer-events: none; z-index: 10002;";
 
   let canvas = document.createElement('canvas');
   canvas.style.cssText = "width: 100% !important; height: 100% !important; max-width: 100% !important; max-height: 100% !important; object-fit: contain; display: block; pointer-events: none; transition: opacity 0.1s;";
@@ -302,18 +303,20 @@ function generateAndShowQRSequence(dataObject, overlay) {
     clearInterval(qrAnimationTimer);
     canvas.style.opacity = "0";
 
+    // ★修正箇所：拡大時はテンキーを隠し、全画面(80vh)までQRを大きくする
     if (isExpanded) {
-      // テンキー表示中（ポーズ中）は控えめなサイズに制限してレイアウト崩壊を防ぐ
       if (isPaused) {
-        qrContainer.style.maxWidth = "40vh";
-        qrContainer.style.maxHeight = "40vh";
-      } else {
-        qrContainer.style.maxWidth = "80vh";
-        qrContainer.style.maxHeight = "80vh";
+        manualInputContainer.style.display = 'none'; // テンキーを隠す
       }
+      qrContainer.style.maxWidth = "80vh";
+      qrContainer.style.maxHeight = "80vh";
       zoomBtn.style.color = "#10B981";
       zoomBtn.style.borderColor = "#10B981";
     } else {
+      // ★修正箇所：縮小時はテンキーを再表示し、元のサイズに戻す
+      if (isPaused) {
+        manualInputContainer.style.display = 'flex'; // テンキーを再表示
+      }
       qrContainer.style.maxWidth = "280px";
       qrContainer.style.maxHeight = "280px";
       zoomBtn.style.color = "#E2E8F0";
@@ -336,9 +339,8 @@ function generateAndShowQRSequence(dataObject, overlay) {
     isPaused = !isPaused;
     if (isPaused) {
       clearInterval(qrAnimationTimer);
+      // ★修正箇所：ポーズ直後は拡大状態をリセットし、テンキーを表示する
       manualInputContainer.style.display = 'flex';
-      
-      // ポーズに入った時は、一度強制的に標準サイズに戻す（拡大状態のリセット）
       qrContainer.style.maxWidth = "280px";
       qrContainer.style.maxHeight = "280px";
       isExpanded = false;
