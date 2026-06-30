@@ -137,7 +137,6 @@ function generateAndShowQRSequence(dataObject, overlay) {
   overlay.innerHTML = ""; 
   overlay.onclick = null; 
   
-  // ★ ヘッダーとその中のボタンが絶対にタッチ判定を奪われないよう z-index と pointer-events を強化
   let headerBar = document.createElement('div');
   headerBar.style.cssText = "position: absolute; top: 0; left: 0; width: 100%; padding: 15px 20px; box-sizing: border-box; display: flex; justify-content: space-between; align-items: center; z-index: 99999; pointer-events: none;";
   
@@ -304,8 +303,14 @@ function generateAndShowQRSequence(dataObject, overlay) {
     canvas.style.opacity = "0";
 
     if (isExpanded) {
-      qrContainer.style.maxWidth = "80vh";
-      qrContainer.style.maxHeight = "80vh";
+      // テンキー表示中（ポーズ中）は控えめなサイズに制限してレイアウト崩壊を防ぐ
+      if (isPaused) {
+        qrContainer.style.maxWidth = "40vh";
+        qrContainer.style.maxHeight = "40vh";
+      } else {
+        qrContainer.style.maxWidth = "80vh";
+        qrContainer.style.maxHeight = "80vh";
+      }
       zoomBtn.style.color = "#10B981";
       zoomBtn.style.borderColor = "#10B981";
     } else {
@@ -332,6 +337,8 @@ function generateAndShowQRSequence(dataObject, overlay) {
     if (isPaused) {
       clearInterval(qrAnimationTimer);
       manualInputContainer.style.display = 'flex';
+      
+      // ポーズに入った時は、一度強制的に標準サイズに戻す（拡大状態のリセット）
       qrContainer.style.maxWidth = "280px";
       qrContainer.style.maxHeight = "280px";
       isExpanded = false;

@@ -126,6 +126,7 @@ function finalizeAndStart() {
   tL = tL ? tL.trim() : "";
   tR = tR ? tR.trim() : "";
 
+  // ★追加修正：試合開始の確定時に、必ずRecorderを初期化し直す（戻ってやり直した際のゴミデータを完全に消去する）
   if (typeof Recorder !== 'undefined') {
     Recorder.initMatch(flowIsDouble, tL, tR, nL1, nL2, nR1, nR2);
   }
