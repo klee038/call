@@ -890,3 +890,12 @@ textarea.smart-field {
   border-radius: 8px;
   object-fit: cover;
 }
+
+/* =========================================
+   【追加修正】長い名前を枠内に収めるための安全な調整
+========================================= */
+.player-tag.long-text {
+  /* 枠（ボーダー）の歪みを避けるためtransform(scale)は使わず、字送りと余白を極限まで詰める */
+  letter-spacing: -1.5px;
+  padding: 8px 4px;
+}

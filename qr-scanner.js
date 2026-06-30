@@ -130,32 +130,37 @@ function openQRScannerModal() {
             
             if (spinner) spinner.style.display = 'flex';
 
-            setTimeout(function() {
-              try {
-                let fullBase64 = scannedChunks.join('');
-                let binaryString = atob(fullBase64);
-                let charArray = binaryString.split('').map(function(c) { return c.charCodeAt(0); });
-                let uint8Array = new Uint8Array(charArray);
+            // 【追加修正】ブラウザの画面描画（Spinnerの表示）が確実に完了するのを待ってから重い処理を開始する
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => {
+                setTimeout(function() {
+                  try {
+                    let fullBase64 = scannedChunks.join('');
+                    let binaryString = atob(fullBase64);
+                    let charArray = binaryString.split('').map(function(c) { return c.charCodeAt(0); });
+                    let uint8Array = new Uint8Array(charArray);
 
-                let decompressedUint8 = pako.inflate(uint8Array);
-                let decompressedText = new TextDecoder().decode(decompressedUint8);
-                let matchData = JSON.parse(decompressedText);
-                
-                if (typeof processScannedData === 'function') {
-                  processScannedData(matchData);
-                } else {
-                  alert("復元用の関数が見つかりません。");
-                }
-                
-                overlay.style.display = 'none';
-                if (spinner) spinner.style.display = 'none';
+                    let decompressedUint8 = pako.inflate(uint8Array);
+                    let decompressedText = new TextDecoder().decode(decompressedUint8);
+                    let matchData = JSON.parse(decompressedText);
+                    
+                    if (typeof processScannedData === 'function') {
+                      processScannedData(matchData);
+                    } else {
+                      alert("復元用の関数が見つかりません。");
+                    }
+                    
+                    overlay.style.display = 'none';
+                    if (spinner) spinner.style.display = 'none';
 
-              } catch (e) {
-                alert("QRコードの結合・解読に失敗しました。");
-                console.error(e);
-                if (spinner) spinner.style.display = 'none';
-              }
-            }, 50);
+                  } catch (e) {
+                    alert("QRコードの結合・解読に失敗しました。");
+                    console.error(e);
+                    if (spinner) spinner.style.display = 'none';
+                  }
+                }, 50); // アニメーションフレーム待ち後の追加の遊び
+              });
+            });
           };
           
           stopCameraAndProcess();

@@ -48,8 +48,11 @@ function processScannedData(data) {
       let now = new Date();
       let dateStr = now.getFullYear() + '/' + ('0' + (now.getMonth() + 1)).slice(-2) + '/' + ('0' + now.getDate()).slice(-2) + ' ' + ('0' + now.getHours()).slice(-2) + ':' + ('0' + now.getMinutes()).slice(-2);
 
-      let teamLName = data.tL ? data.tL : (data.flowIsDouble ? `${data.nL1} & ${data.nL2}` : data.nL1);
-      let teamRName = data.tR ? data.tR : (data.flowIsDouble ? `${data.nR1} & ${data.nR2}` : data.nR1);
+      let tLCombined = data.tL !== undefined ? data.tL : ((data.tL1 === data.tL2 || !data.tL2) ? data.tL1 : `${data.tL1} / ${data.tL2}`);
+      let tRCombined = data.tR !== undefined ? data.tR : ((data.tR1 === data.tR2 || !data.tR2) ? data.tR1 : `${data.tR1} / ${data.tR2}`);
+
+      let teamLName = tLCombined ? tLCombined : (data.flowIsDouble ? `${data.nL1} & ${data.nL2}` : data.nL1);
+      let teamRName = tRCombined ? tRCombined : (data.flowIsDouble ? `${data.nR1} & ${data.nR2}` : data.nR1);
       let matchTitle = `${teamLName} vs ${teamRName}`;
 
       let matchScoreStr = `${data.gL} - ${data.gR}`;
@@ -103,7 +106,9 @@ function processScannedData(data) {
     let limitPt = (rawPt === 21) ? 30 : ((rawPt === 15) ? 21 : 15);
     let setStr = hasSet ? `デュースあり(${limitPt})` : "デュースなし";
     
-    let ruleStr = `${typeStr} / ${gameStr} / ${ptStr} / ${setStr}`;
+    let isTeam = data.hasOwnProperty('flowIsTeamMatch') ? data.flowIsTeamMatch : false;
+    let matchTypeStr = isTeam ? "団体戦" : "個人戦";
+    let ruleStr = `${matchTypeStr} / ${typeStr} / ${gameStr} / ${ptStr} / ${setStr}`;
     
     let names = Array.isArray(data.n) ? data.n : [];
     let l1 = data.nL1 || names[0] || "PlayerA1";
@@ -111,16 +116,23 @@ function processScannedData(data) {
     let r1 = data.nR1 || names[2] || "PlayerB1";
     let r2 = isD ? (data.nR2 || names[3] || "PlayerB2") : "";
     
-    let lTeam = data.tL ? `[${data.tL}] ` : "";
-    let rTeam = data.tR ? `[${data.tR}] ` : "";
+    let tL1Val = data.tL1 !== undefined ? data.tL1 : (data.tL || "");
+    let tL2Val = data.tL2 !== undefined ? data.tL2 : (data.tL || "");
+    let tR1Val = data.tR1 !== undefined ? data.tR1 : (data.tR || "");
+    let tR2Val = data.tR2 !== undefined ? data.tR2 : (data.tR || "");
+
+    let lTeam1 = tL1Val ? `[${tL1Val}] ` : "";
+    let lTeam2 = tL2Val ? `[${tL2Val}] ` : "";
+    let rTeam1 = tR1Val ? `[${tR1Val}] ` : "";
+    let rTeam2 = tR2Val ? `[${tR2Val}] ` : "";
     
-    let lPlayers = isD ? `${l1} & ${l2}` : l1;
-    let rPlayers = isD ? `${r1} & ${r2}` : r1;
+    let lPlayers = isD ? `${lTeam1}${l1} & ${lTeam2}${l2}` : `${lTeam1}${l1}`;
+    let rPlayers = isD ? `${rTeam1}${r1} & ${rTeam2}${r2}` : `${rTeam1}${r1}`;
     
     let confirmMsg = `以下の試合データを受信しました。\nこの試合を開始（トス画面へ移動）しますか？\n\n` +
                      `【ルール】\n${ruleStr}\n\n` +
-                     `【LEFT】\n${lTeam}${lPlayers}\n\n` +
-                     `【RIGHT】\n${rTeam}${rPlayers}`;
+                     `【LEFT】\n${lPlayers}\n\n` +
+                     `【RIGHT】\n${rPlayers}`;
 
     if (confirm(confirmMsg)) {
       flowIsDouble = isD;
@@ -128,9 +140,13 @@ function processScannedData(data) {
       flowMaxPoints = (data.flowMaxPoints !== undefined) ? data.flowMaxPoints : (data.p !== undefined ? data.p : 15);
       flowHasSetting = hasSet;
       flowHasCourtSelect = (data.flowHasCourtSelect !== undefined) ? data.flowHasCourtSelect : (data.hc !== undefined ? data.hc : true);
+      flowIsTeamMatch = isTeam;
       
-      txtTL = data.tL || "";
-      txtTR = data.tR || "";
+      txtTL1 = tL1Val;
+      txtTL2 = tL2Val;
+      txtTR1 = tR1Val;
+      txtTR2 = tR2Val;
+
       txtPL1 = data.nL1 || names[0] || "";
       txtPL2 = isD ? (data.nL2 || names[1] || "") : "";
       txtPR1 = data.nR1 || names[2] || "";

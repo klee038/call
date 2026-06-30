@@ -1,4 +1,8 @@
-﻿function generatePDF(state) {
+﻿// =========================================
+// PDFスコアシート生成処理 (pdf.js)
+// =========================================
+
+function generatePDF(state) {
   let container = document.createElement('div');
   container.id = 'pdf-export-container';
   
@@ -7,6 +11,7 @@
   let games = state.flowMaxGames || 3;
   let points = state.flowMaxPoints || 21;
   let hasSetting = state.flowHasSetting !== undefined ? state.flowHasSetting : true;
+  let isTeamMatch = state.flowIsTeamMatch !== undefined ? state.flowIsTeamMatch : false;
   
   // ★ 5ゲームマッチかどうかを判定
   let is5Games = (games >= 5);
@@ -17,8 +22,15 @@
       matchTypeStr += ` (${deuceLimit})`;
   }
   
-  let tLName = state.initialTL || state.tL || "";
-  let tRName = state.initialTR || state.tR || "";
+  let tournamentTypeLabel = isTeamMatch ? "団体戦" : "個人戦";
+
+  // ★ 新しいチーム変数を結合して旧仕様（1枠表示）に合わせる
+  let combTL = (state.initialTL1 === state.initialTL2 || !state.initialTL2) ? state.initialTL1 : `${state.initialTL1} / ${state.initialTL2}`;
+  let combTR = (state.initialTR1 === state.initialTR2 || !state.initialTR2) ? state.initialTR1 : `${state.initialTR1} / ${state.initialTR2}`;
+
+  let tLName = combTL || state.initialTL || state.tL || "";
+  let tRName = combTR || state.initialTR || state.tR || "";
+
   let nL1 = state.initialNL1 || state.nL1 || "";
   let nL2 = isDouble ? (state.initialNL2 || state.nL2 || "") : "";
   let nR1 = state.initialNR1 || state.nR1 || "";
@@ -203,7 +215,7 @@
       <div class="sheet-header" style="color: #000;">
         <div class="header-side">
           <div class="header-line">大会名：<span class="line-blank"></span></div>
-          <div class="header-line">大会種別：<span class="line-blank"></span></div>
+          <div class="header-line">大会種別：<span class="line-blank" style="font-size: 11px;">${tournamentTypeLabel}</span></div>
           <div class="header-line">開催場所：<span class="line-blank"></span></div>
           <div class="header-line">大会期日：<span class="line-blank">${matchDate}</span></div>
         </div>
@@ -258,8 +270,8 @@
   let element = document.getElementById('score-sheet-a4');
   let now = new Date();
   let dateStrPDF = now.getFullYear() + ('0'+(now.getMonth()+1)).slice(-2) + ('0'+now.getDate()).slice(-2) + "_" + ('0'+now.getHours()).slice(-2) + ('0'+now.getMinutes()).slice(-2);
-  let safeTL = (tLName || "TeamL").replace(/\s+/g, '_');
-  let safeTR = (tRName || "TeamR").replace(/\s+/g, '_');
+  let safeTL = (tLName || "TeamL").replace(/\s+/g, '_').replace(/\//g, '-');
+  let safeTR = (tRName || "TeamR").replace(/\s+/g, '_').replace(/\//g, '-');
   let filename = `${dateStrPDF}_${safeTL}_vs_${safeTR}.pdf`;
 
   let opt = {

@@ -6,7 +6,8 @@
 let sL = 0, sR = 0;
 let gL = 0, gR = 0;
 let srvL = true;
-let tL = "", tR = "", nL1 = "", nL2 = "", nR1 = "", nR2 = "";
+let tL1 = "", tL2 = "", tR1 = "", tR2 = "";
+let nL1 = "", nL2 = "", nR1 = "", nR2 = "";
 let pL1IsRight = true, pR1IsRight = true;
 let isOver = false, needsOverlay = false, ivDoneInThisGame = false, isSelectingRoles = true;
 let overlayMsg = "", resultDetails = "", ceNotice = "", annL = "", annR = "";
@@ -15,9 +16,8 @@ let hist = [];
 let redoStack = []; 
 
 let justAfterInterval = false;
-let initialTL = "", initialTR = "";
-let initialNL1 = "";
-let initialNL2 = "", initialNR1 = "", initialNR2 = ""; 
+let initialTL1 = "", initialTL2 = "", initialTR1 = "", initialTR2 = "";
+let initialNL1 = "", initialNL2 = "", initialNR1 = "", initialNR2 = ""; 
 let matchScoreHistory = [];
 let matchDefaultRole = {};
 
@@ -27,12 +27,11 @@ let matchTimeline = [];
 function resetNames() {
   flowStep = 1;
   tossWinner = null; winnerChoice = null; loserChoice = null;
-  txtTL = ""; txtTR = "";
+  txtTL1 = ""; txtTL2 = ""; txtTR1 = ""; txtTR2 = "";
   txtPL1 = ""; txtPL2 = "";
   txtPR1 = ""; txtPR2 = "";
-  initialTL = ""; initialTR = "";
-  initialNL1 = "";
-  initialNL2 = ""; initialNR1 = ""; initialNR2 = ""; 
+  initialTL1 = ""; initialTL2 = ""; initialTR1 = ""; initialTR2 = "";
+  initialNL1 = ""; initialNL2 = ""; initialNR1 = ""; initialNR2 = ""; 
   matchScoreHistory = [];
   matchDefaultRole = {};
   matchTimeline = [];
@@ -84,19 +83,19 @@ function roleBack() {
 }
 
 function finalizeAndStart() {
-  initialTL = txtTL; initialTR = txtTR; initialNL1 = txtPL1; 
-  initialNL2 = txtPL2; initialNR1 = txtPR1; initialNR2 = txtPR2; 
+  initialTL1 = txtTL1; initialTL2 = txtTL2; initialTR1 = txtTR1; initialTR2 = txtTR2; 
+  initialNL1 = txtPL1; initialNL2 = txtPL2; initialNR1 = txtPR1; initialNR2 = txtPR2; 
   matchScoreHistory = []; matchTimeline = []; justAfterInterval = false;
 
   let swapCourts = (tossWinner === 'L' && (winnerChoice === 'RIGHT' || loserChoice === 'LEFT')) ||
                    (tossWinner === 'R' && (winnerChoice === 'LEFT' || loserChoice === 'RIGHT'));
 
   if (swapCourts) {
-    tL = txtTR; tR = txtTL;
+    tL1 = txtTR1; tL2 = txtTR2; tR1 = txtTL1; tR2 = txtTL2;
     nL1 = txtPR1; nR1 = txtPL1;
     nL2 = txtPR2; nR2 = txtPL2;
   } else {
-    tL = txtTL; tR = txtTR;
+    tL1 = txtTL1; tL2 = txtTL2; tR1 = txtTR1; tR2 = txtTR2;
     nL1 = txtPL1; nR1 = txtPR1;
     nL2 = txtPL2; nR2 = txtPR2;
   }
@@ -123,15 +122,14 @@ function finalizeAndStart() {
   pL1IsRight = pR1IsRight = true; 
   document.getElementById("game-flow-container").style.display = "none";
 
-  tL = tL ? tL.trim() : "";
-  tR = tR ? tR.trim() : "";
+  // 旧仕様との互換性（Recorder等）のための一時的な結合変数
+  let oldTL = (tL1 === tL2 || !tL2) ? tL1 : `${tL1} / ${tL2}`;
+  let oldTR = (tR1 === tR2 || !tR2) ? tR1 : `${tR1} / ${tR2}`;
 
-  // ★追加修正：試合開始の確定時に、必ずRecorderを初期化し直す（戻ってやり直した際のゴミデータを完全に消去する）
   if (typeof Recorder !== 'undefined') {
-    Recorder.initMatch(flowIsDouble, tL, tR, nL1, nL2, nR1, nR2);
+    Recorder.initMatch(flowIsDouble, oldTL, oldTR, nL1, nL2, nR1, nR2);
   }
 
-  // ★修正：シングルスの場合は、ここで得点板に行く前にロングコール画面を判定して挟む
   if (!flowIsDouble) {
     if (typeof Recorder !== 'undefined') {
       let sName = srvL ? nL1 : nR1;
@@ -149,7 +147,6 @@ function finalizeAndStart() {
       document.getElementById("board-ui").style.display = "flex";
     }
   } else {
-    // ダブルスの場合は、とりあえずボードUIを見せて陣形選択へ
     document.getElementById("board-ui").style.display = "flex";
     if (isSelectingRoles) {
       if (typeof initRoleSelectionOverlay === 'function') initRoleSelectionOverlay();
@@ -274,7 +271,6 @@ function gameEndCore(leftWon) {
   if (leftWon) gL++; else gR++;
   let winTarget = Math.floor((flowMaxGames + 1) / 2);
 
-  // ★修正箇所：最終スコアが逆転しないように、ダブルスで立ち位置が入れ替わっていても正しくチームを判定する
   let isInitialLeftNowLeft = false;
   if (!flowIsDouble) {
       isInitialLeftNowLeft = (nL1 === initialNL1);
@@ -293,7 +289,6 @@ function gameEndCore(leftWon) {
     
     let matchScoreStr = isL ? `${gL}-${gR}` : `${gR}-${gL}`;
     
-    // ★マッチ終了後のダイアログ表示用チーム判定も同様に修正
     let isLeftWinnerInitialLeft = false;
     if (!flowIsDouble) {
         isLeftWinnerInitialLeft = (nL1 === initialNL1);
@@ -414,7 +409,10 @@ function triggerBannerDisplay(show) {
 function boardSwap() {
   let ts = sL; sL = sR; sR = ts;
   let tg = gL; gL = gR; gR = tg;
-  let tt = tL; tL = tR; tR = tt;
+  
+  let tt1 = tL1; tL1 = tR1; tR1 = tt1;
+  let tt2 = tL2; tL2 = tR2; tR2 = tt2;
+  
   let tn1 = nL1; nL1 = nR1; nR1 = tn1;
   let tn2 = nL2; nL2 = nR2; nR2 = tn2;
   let tpL = pL1IsRight; pL1IsRight = pR1IsRight; pR1IsRight = tpL;
@@ -441,7 +439,10 @@ function boardClose() {
 }
 
 function getBoardSideName(isL) {
-  let sideT = isL ? tL : tR;
+  let t1 = isL ? tL1 : tR1;
+  let t2 = isL ? tL2 : tR2;
+  let sideT = (t1 === t2 || !t2) ? t1 : `${t1} / ${t2}`;
+  
   if (sideT.trim().length > 0) {
     return sideT;
   } else {
@@ -450,7 +451,10 @@ function getBoardSideName(isL) {
 }
 
 function getBannerName(isL) {
-  let sideT = isL ? tL : tR;
+  let t1 = isL ? tL1 : tR1;
+  let t2 = isL ? tL2 : tR2;
+  let sideT = (t1 === t2 || !t2) ? t1 : `${t1} / ${t2}`;
+  
   if (sideT.trim().length > 0) {
     return sideT;
   } else {
@@ -461,11 +465,11 @@ function getBannerName(isL) {
 function saveActiveBackup() {
   if (flowStep < 3) return; 
   let stateData = {
-    flowIsDouble, flowMaxGames, flowMaxPoints, flowHasCE, flowHasInterval, flowHasSetting,
-    sL, sR, gL, gR, srvL, tL, tR, nL1, nL2, nR1, nR2,
+    flowIsDouble, flowMaxGames, flowMaxPoints, flowHasCE, flowHasInterval, flowHasSetting, flowIsTeamMatch,
+    sL, sR, gL, gR, srvL, tL1, tL2, tR1, tR2, nL1, nL2, nR1, nR2,
     pL1IsRight, pR1IsRight, isOver, needsOverlay, ivDoneInThisGame, isSelectingRoles,
     overlayMsg, resultDetails, ceNotice, annL, annR, shownCountL, shownCountR, justAfterInterval,
-    initialTL, initialTR, initialNL1, initialNL2, initialNR1, initialNR2, 
+    initialTL1, initialTL2, initialTR1, initialTR2, initialNL1, initialNL2, initialNR1, initialNR2, 
     matchScoreHistory, matchDefaultRole, matchTimeline,
     hist, redoStack,
     recorderData: (typeof Recorder !== 'undefined') ? Recorder.exportData() : null 
@@ -492,15 +496,17 @@ function saveMatchToHistory(status) {
   let now = new Date();
   let dateStr = now.getFullYear() + '/' + ('0' + (now.getMonth() + 1)).slice(-2) + '/' + ('0' + now.getDate()).slice(-2) + ' ' + ('0' + now.getHours()).slice(-2) + ':' + ('0' + now.getMinutes()).slice(-2);
 
-  let teamLName = tL ? tL : (flowIsDouble ? `${nL1} & ${nL2}` : nL1);
-  let teamRName = tR ? tR : (flowIsDouble ? `${nR1} & ${nR2}` : nR1);
+  let oldTL = (tL1 === tL2 || !tL2) ? tL1 : `${tL1} / ${tL2}`;
+  let oldTR = (tR1 === tR2 || !tR2) ? tR1 : `${tR1} / ${tR2}`;
+
+  let teamLName = oldTL ? oldTL : (flowIsDouble ? `${nL1} & ${nL2}` : nL1);
+  let teamRName = oldTR ? oldTR : (flowIsDouble ? `${nR1} & ${nR2}` : nR1);
   let matchTitle = `${teamLName} vs ${teamRName}`;
 
   let matchScoreStr = `${gL} - ${gR}`;
   let gameDetails = matchScoreHistory.map(g => `${g.a}-${g.b}`).join(', ');
   
   if (status === "INTERRUPTED") {
-    // ★ここも同様に修正
     let isInitialLeftNowLeft = false;
     if (!flowIsDouble) {
         isInitialLeftNowLeft = (nL1 === initialNL1);
@@ -513,11 +519,11 @@ function saveMatchToHistory(status) {
   }
 
   let stateData = {
-    flowIsDouble, flowMaxGames, flowMaxPoints, flowHasCE, flowHasInterval, flowHasSetting,
-    sL, sR, gL, gR, srvL, tL, tR, nL1, nL2, nR1, nR2,
+    flowIsDouble, flowMaxGames, flowMaxPoints, flowHasCE, flowHasInterval, flowHasSetting, flowIsTeamMatch,
+    sL, sR, gL, gR, srvL, tL1, tL2, tR1, tR2, nL1, nL2, nR1, nR2,
     pL1IsRight, pR1IsRight, isOver, needsOverlay, ivDoneInThisGame, isSelectingRoles,
     overlayMsg, resultDetails, ceNotice, annL, annR, shownCountL, shownCountR, justAfterInterval,
-    initialTL, initialTR, initialNL1, initialNL2, initialNR1, initialNR2, 
+    initialTL1, initialTL2, initialTR1, initialTR2, initialNL1, initialNL2, initialNR1, initialNR2, 
     matchScoreHistory, matchDefaultRole, matchTimeline,
     hist, redoStack,
     recorderData: (typeof Recorder !== 'undefined') ? Recorder.exportData() : null

@@ -97,6 +97,13 @@ function renderFlow() {
       <div class="flow-title">MATCH FORMAT</div>
       ${headerActionsHtml}
       <div class="setting-row">
+        <div class="setting-label">大会種別</div>
+        <div class="toggle-group">
+          <button class="toggle-item ${!flowIsTeamMatch ? 'selected' : ''}" onclick="setTeamMatch(false)">個人戦</button>
+          <button class="toggle-item ${flowIsTeamMatch ? 'selected' : ''}" onclick="setTeamMatch(true)">団体戦</button>
+        </div>
+      </div>
+      <div class="setting-row">
         <div class="setting-label">種目</div>
         <div class="toggle-group">
           <button class="toggle-item ${!flowIsDouble ? 'selected' : ''}" onclick="setDouble(false)">SINGLES</button>
@@ -172,9 +179,9 @@ function renderFlow() {
         <div class="names-column">
           <div class="column-title" style="color: #FFFFFF;">LEFT</div>
           <div class="input-field-group">
-            <label>Team</label>
-            <input type="text" class="smart-field" id="input-tl" value="${txtTL}" placeholder="チーム名 (任意)">
-            <button class="select-icon-btn" onclick="openTeamSelectModal('input-tl')">${selectIconSvg}</button>
+            <label>Team 1</label>
+            <input type="text" class="smart-field" id="input-tl1" value="${txtTL1}" placeholder="チーム名" onchange="autoCopyTeam('L')">
+            <button class="select-icon-btn" onclick="openTeamSelectModal('input-tl1')">${selectIconSvg}</button>
           </div>
           <div class="input-field-group">
             <label>Player 1</label>
@@ -182,6 +189,11 @@ function renderFlow() {
             <button class="select-icon-btn" onclick="openPlayerSelectModal('input-pl1')">${selectIconSvg}</button>
           </div>
           ${flowIsDouble ? `
+          <div class="input-field-group">
+            <label>Team 2</label>
+            <input type="text" class="smart-field" id="input-tl2" value="${txtTL2}" placeholder="チーム名 (混成時)">
+            <button class="select-icon-btn" onclick="openTeamSelectModal('input-tl2')">${selectIconSvg}</button>
+          </div>
           <div class="input-field-group">
             <label>Player 2</label>
             <input type="text" class="smart-field" id="input-pl2" value="${dispPL2}" placeholder="PlayerA2">
@@ -191,9 +203,9 @@ function renderFlow() {
         <div class="names-column">
           <div class="column-title" style="color: #FFFFFF;">RIGHT</div>
           <div class="input-field-group">
-            <label>Team</label>
-            <input type="text" class="smart-field" id="input-tr" value="${txtTR}" placeholder="チーム名 (任意)">
-            <button class="select-icon-btn" onclick="openTeamSelectModal('input-tr')">${selectIconSvg}</button>
+            <label>Team 1</label>
+            <input type="text" class="smart-field" id="input-tr1" value="${txtTR1}" placeholder="チーム名" onchange="autoCopyTeam('R')">
+            <button class="select-icon-btn" onclick="openTeamSelectModal('input-tr1')">${selectIconSvg}</button>
           </div>
           <div class="input-field-group">
             <label>Player 1</label>
@@ -201,6 +213,11 @@ function renderFlow() {
             <button class="select-icon-btn" onclick="openPlayerSelectModal('input-pr1')">${selectIconSvg}</button>
           </div>
           ${flowIsDouble ? `
+          <div class="input-field-group">
+            <label>Team 2</label>
+            <input type="text" class="smart-field" id="input-tr2" value="${txtTR2}" placeholder="チーム名 (混成時)">
+            <button class="select-icon-btn" onclick="openTeamSelectModal('input-tr2')">${selectIconSvg}</button>
+          </div>
           <div class="input-field-group">
             <label>Player 2</label>
             <input type="text" class="smart-field" id="input-pr2" value="${dispPR2}" placeholder="PlayerB2">
@@ -213,8 +230,8 @@ function renderFlow() {
     `;
   } 
   else if (flowStep === 3) {
-    let nameL = getTossName(txtTL, txtPL1, txtPL2);
-    let nameR = getTossName(txtTR, txtPR1, txtPR2);
+    let nameL = getTossName(txtTL1, txtTL2, txtPL1, txtPL2);
+    let nameR = getTossName(txtTR1, txtTR2, txtPR1, txtPR2);
 
     let html = `
       <div class="flow-title">TOSS</div>

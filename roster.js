@@ -66,12 +66,10 @@ function cancelRosterEdit() {
  * 【ルール2】EDIT選択時の自動タブ切り替えとデータ反映
  */
 function editPlayerInRoster(index) {
-  // ★修正：先にタブ切り替え（お掃除処理）を実行し、文字が消されるのを防ぐ
   if(document.getElementById('roster-tab-single')) {
     switchRosterMode('single');
   }
 
-  // タブ切り替え後にデータをセットする
   let roster = getRoster();
   let player = roster[index];
   editingRosterIndex = index;
@@ -97,9 +95,10 @@ function addPlayerToRoster() {
     return;
   }
   
+  name = name.replace(/　/g, ' ');
+  
   let roster = getRoster();
 
-  // 同姓同名・同チームの重複チェック（編集中の自分自身は除外）
   let isDuplicate = roster.some((player, index) => {
     if (editingRosterIndex === index) return false;
     return player.name === name && (player.team || "") === team;
@@ -117,7 +116,7 @@ function addPlayerToRoster() {
   }
   
   saveRoster(roster);
-  cancelRosterEdit(); // 入力欄とボタン状態をリセット
+  cancelRosterEdit(); 
   renderRosterList();
 }
 
@@ -130,7 +129,6 @@ function deletePlayerFromRoster(index) {
     roster.splice(index, 1);
     saveRoster(roster);
     
-    // 編集中のアイテムを消した場合のリセット
     if (editingRosterIndex === index) {
       cancelRosterEdit();
     }
@@ -155,7 +153,6 @@ function renderRosterList() {
 
   let html = "";
   
-  // ★絞り込み中なら「一括変更」ボタンをリストの上部に出現させる
   if (searchQ) {
     let displayQ = searchQ === "(所属なし)" ? "所属なし" : searchQ;
     html += `
@@ -211,7 +208,7 @@ function bulkChangeTeamName(searchQ) {
   if (count === 0) return;
 
   let newTeamName = prompt(`対象の ${count}名 の新しいチーム名を入力してください。\n（空欄にしてOKを押すとチーム名を「なし」にします）`);
-  if (newTeamName === null) return; // キャンセルされた場合
+  if (newTeamName === null) return; 
 
   let trimmedNewName = newTeamName.trim();
 
@@ -232,7 +229,6 @@ function bulkChangeTeamName(searchQ) {
 
   saveRoster(roster);
   
-  // 検索枠を新しいチーム名に書き換えて再検索状態にする
   let searchEl = document.getElementById('roster-search-team');
   if (searchEl) {
       searchEl.value = trimmedNewName === "" ? "(所属なし)" : trimmedNewName;
@@ -260,7 +256,6 @@ function renderTeamSelectList() {
   let roster = getRoster();
   let listEl = document.getElementById('player-select-list');
   
-  // 名簿の中から空白以外のチーム名を重複なしで抽出
   let teams = [...new Set(roster.map(p => p.team).filter(t => t && t.trim() !== ""))];
   
   if (roster.length === 0) {
@@ -268,7 +263,6 @@ function renderTeamSelectList() {
     return;
   }
   
-  // ★新規追加：常に一番上に「(所属なし)」の選択肢を出す
   let html = `
     <button class="roster-item roster-select-btn" onclick="selectTeam('(所属なし)')">
       <div class="roster-item-info">
@@ -292,7 +286,6 @@ function renderTeamSelectList() {
  * 【ルール5】チームを選択して入力欄へ反映
  */
 function selectTeam(team) {
-  // ★修正：検索枠以外で「(所属なし)」が選ばれた場合は、空欄としてセットする
   if (team === '(所属なし)' && targetInputIdForSelect !== 'roster-search-team') {
     document.getElementById(targetInputIdForSelect).value = "";
   } else {
@@ -301,6 +294,10 @@ function selectTeam(team) {
   
   if (targetInputIdForSelect === 'roster-search-team') {
     renderRosterList();
+  } else {
+    // チームが選択された後、もしTeam1の枠なら自動コピーを走らせる
+    if (targetInputIdForSelect === 'input-tl1') autoCopyTeam('L');
+    if (targetInputIdForSelect === 'input-tr1') autoCopyTeam('R');
   }
   closePlayerSelectModal();
 }
@@ -335,13 +332,17 @@ function renderPlayerSelectList() {
     return;
   }
 
-  let isLeft = targetInputIdForSelect.includes('-pl');
-  let teamInputId = isLeft ? 'input-tl' : 'input-tr';
+  // 選択枠（Player1か2か）に合わせて、対応するTeam枠の値を取得して絞り込む
+  let teamInputId = "";
+  if (targetInputIdForSelect === 'input-pl1') teamInputId = 'input-tl1';
+  else if (targetInputIdForSelect === 'input-pl2') teamInputId = 'input-tl2';
+  else if (targetInputIdForSelect === 'input-pr1') teamInputId = 'input-tr1';
+  else if (targetInputIdForSelect === 'input-pr2') teamInputId = 'input-tr2';
+
   let filterTeam = document.getElementById(teamInputId)?.value.trim() || "";
 
   let filteredRoster = roster;
   if (filterTeam !== "") {
-    // 枠に(所属なし)が入っている場合は空欄の人だけを絞り込む
     if (filterTeam === "(所属なし)") {
       filteredRoster = roster.filter(p => (p.team || "") === "");
     } else {
@@ -354,7 +355,6 @@ function renderPlayerSelectList() {
     }
   }
   
-  // 現在フォーカスしている枠「以外」ですでに選ばれている選手名を取得
   let otherInputs = ['input-pl1', 'input-pl2', 'input-pr1', 'input-pr2'].filter(id => id !== targetInputIdForSelect);
   let takenNames = otherInputs.map(id => {
       let el = document.getElementById(id);
@@ -390,53 +390,27 @@ function renderPlayerSelectList() {
 function selectPlayer(name, team) {
   document.getElementById(targetInputIdForSelect).value = name;
   
-  let roster = getRoster();
+  // 対応するチーム枠が空欄なら、選んだプレイヤーのチームを自動でセットする
+  let teamInputId = "";
+  if (targetInputIdForSelect === 'input-pl1') teamInputId = 'input-tl1';
+  else if (targetInputIdForSelect === 'input-pl2') teamInputId = 'input-tl2';
+  else if (targetInputIdForSelect === 'input-pr1') teamInputId = 'input-tr1';
+  else if (targetInputIdForSelect === 'input-pr2') teamInputId = 'input-tr2';
   
-  // 指定された枠のペアを考慮してチーム名を算出するヘルパー
-  let getTeam = (pId1, pId2) => {
-      let p1 = document.getElementById(pId1)?.value.trim() || "";
-      // script.jsの flowIsDouble に依存（万一未定義なら true 扱い）
-      let isDouble = typeof flowIsDouble !== 'undefined' ? flowIsDouble : true;
-      if (!isDouble) {
-          let p = roster.find(r => r.name === p1);
-          return p ? p.team : "";
-      }
-      let p2 = document.getElementById(pId2)?.value.trim() || "";
-      let t1 = roster.find(r => r.name === p1)?.team || "";
-      let t2 = roster.find(r => r.name === p2)?.team || "";
-      
-      if (p1 && p2) {
-          return (t1 === t2 && t1 !== "") ? t1 : "";
-      } else if (p1) {
-          return t1;
-      } else if (p2) {
-          return t2;
-      }
-      return "";
-  };
-
-  let derivedL = getTeam('input-pl1', 'input-pl2');
-  let derivedR = getTeam('input-pr1', 'input-pr2');
-
-  let tlEl = document.getElementById('input-tl');
-  let trEl = document.getElementById('input-tr');
-
-  // 選択した側のチーム名だけを確実にセット・維持する
-  if (tlEl && trEl) {
-      let isLeft = targetInputIdForSelect.includes('-pl');
-      if (isLeft) {
-          if (derivedL !== "") tlEl.value = derivedL;
-      } else {
-          if (derivedR !== "") trEl.value = derivedR;
-      }
+  let teamEl = document.getElementById(teamInputId);
+  if (teamEl && teamEl.value.trim() === "") {
+      teamEl.value = team;
   }
+  
+  // Team1枠に自動セットされた場合、Team2枠が空なら自動コピーを走らせる
+  if (targetInputIdForSelect === 'input-pl1') autoCopyTeam('L');
+  if (targetInputIdForSelect === 'input-pr1') autoCopyTeam('R');
 
   closePlayerSelectModal();
 }
 
 /**
  * タブ切り替え（SINGLE ADD / BULK ADD）
- * 【ルール3】タブ切り替え時、テキストエリアの中身は消さない
  */
 function switchRosterMode(mode) {
   const tabSingle = document.getElementById('roster-tab-single');
@@ -478,12 +452,11 @@ function addBulkPlayersToRoster() {
   
   lines.forEach(line => {
     let rawLine = line.trim();
-    if (!rawLine) return; // 空行はスルー
+    if (!rawLine) return; 
     
     let name = "";
     let team = "";
     
-    // 【ルール4】カンマ、またはタブ（エクセルからのコピペ）のみで分割する
     if (rawLine.includes(',')) {
       let parts = rawLine.split(',');
       name = parts[0].trim();
@@ -495,14 +468,14 @@ function addBulkPlayersToRoster() {
       team = parts.slice(1).join('\t').trim();
       if(team === "") team = globalTeam;
     } else {
-      // カンマもタブもない場合は、行全体を名前として扱う（途中のスペースは保護）
       name = rawLine; 
       team = globalTeam;
     }
     
-    if (!name) return; // 名前が空の行はスキップ
+    if (!name) return; 
     
-    // 名簿内の同姓同名・同チーム重複チェック
+    name = name.replace(/　/g, ' ');
+    
     let isDuplicate = roster.some(p => p.name === name && (p.team || "") === team);
     if (!isDuplicate) {
       roster.push({ name: name, team: team });
@@ -513,7 +486,6 @@ function addBulkPlayersToRoster() {
   if (addCount > 0) {
     saveRoster(roster);
     renderRosterList();
-    // 【修正箇所】成功した時のみ、重複防止のためテキストとチーム名を両方クリア
     if (textEl) textEl.value = "";
     if (globalTeamEl) globalTeamEl.value = "";
     alert(`${addCount}名の選手を名簿に一括登録しました！`);
@@ -563,7 +535,7 @@ function deleteFilteredTeamRoster() {
  */
 function clearAllRoster() {
   if(confirm("名簿の全ての選手を完全削除します。\n（元には戻せません）よろしいですか？")) {
-    saveRoster([]); // 空の配列を保存
+    saveRoster([]); 
     if(editingRosterIndex !== -1) cancelRosterEdit();
     renderRosterList();
   }

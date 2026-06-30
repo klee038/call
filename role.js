@@ -5,13 +5,11 @@
 function initRoleSelectionOverlay() {
   const overlay = document.getElementById("role-selection-overlay");
   
-  // game.js側でシングルスの場合はisSelectingRoles=falseに設定済のため、ここで処理を抜ける
   if (!isSelectingRoles) {
     if (overlay) overlay.style.display = "none";
     return;
   }
 
-  // 万が一シングルスでここに来た場合は何もしない（game.jsで裏側記録するため）
   if (!flowIsDouble) {
     if (overlay) overlay.style.display = "none";
     return;
@@ -43,17 +41,29 @@ function initRoleSelectionOverlay() {
   if (srvL) {
     if (p1S_L) { if (pL1IsRight) boxNearClassL = "server"; else boxFarClassL = "server"; } 
     else       { if (pL1IsRight) boxFarClassL = "server"; else boxNearClassL = "server"; }
-    if (boxFarClassL === "server") boxNearClassR = "receiver";
-    else if (boxNearClassL === "server") boxFarClassR = "receiver";
+    
+    if (boxFarClassL === "server") {
+        boxNearClassR = "receiver";
+    } else if (boxNearClassL === "server") {
+        boxFarClassR = "receiver";
+    }
   } else {
     if (p1S_R) { if (pR1IsRight) boxFarClassR = "server"; else boxNearClassR = "server"; } 
     else       { if (pR1IsRight) boxNearClassR = "server"; else boxFarClassR = "server"; }
-    if (boxNearClassR === "server") boxFarClassL = "receiver";
-    else if (boxNearClassR === "server") boxNearClassL = "receiver";
+
+    if (boxNearClassR === "server") {
+        boxFarClassL = "receiver";
+    } else if (boxFarClassR === "server") {
+        boxNearClassL = "receiver";
+    }
   }
 
-  let dispTL = tL ? tL : "&nbsp;";
-  let dispTR = tR ? tR : "&nbsp;";
+  // チーム名が異なる場合はスラッシュで結合して表示する
+  let tLCombined = (tL1 === tL2 || !tL2) ? tL1 : `${tL1} / ${tL2}`;
+  let tRCombined = (tR1 === tR2 || !tR2) ? tR1 : `${tR1} / ${tR2}`;
+
+  let dispTL = tLCombined ? tLCombined : "&nbsp;";
+  let dispTR = tRCombined ? tRCombined : "&nbsp;";
 
   let extFarL = boxFarNameL.length >= 12 ? " long-text" : "";
   let extNearL = boxNearNameL.length >= 12 ? " long-text" : "";
@@ -147,7 +157,6 @@ function confirmRoles() {
   const overlay = document.getElementById("role-selection-overlay");
   if (overlay) overlay.style.display = "none";
   
-  // ★修正：ダブルスでも、第1ゲーム開始時かつ公式戦モードならロングコール画面を挟む
   if (typeof flowIsOfficialCall !== 'undefined' && flowIsOfficialCall && gL === 0 && gR === 0) {
       if (typeof showLongCallOverlay === 'function') {
           showLongCallOverlay();

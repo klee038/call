@@ -12,7 +12,8 @@ function syncVolumeCallカンペ() {
       let maxScore = Math.max(sL, sR);
       let minScore = Math.min(sL, sR);
       let leftWonMatch = (gL > gR);
-      let winnerName = leftWonMatch ? tL : tR;
+      
+      let winnerName = leftWonMatch ? (tL1 === tL2 || !tL2 ? tL1 : `${tL1} / ${tL2}`) : (tR1 === tR2 || !tR2 ? tR1 : `${tR1} / ${tR2}`);
       if (winnerName.trim().length === 0) {
           winnerName = leftWonMatch ? getBannerName(true) : getBannerName(false);
       }
@@ -94,7 +95,6 @@ function syncVolumeCallカンペ() {
       return;
   }
 
-  // ★0-0時のコール。START CALL（公式戦）のON/OFF状態によって First game を付けるかどうかを厳密に判定
   if (sL === 0 && sR === 0 && !isOver && !needsOverlay && !justAfterInterval) {
     let callEn = "";
     let callKana = "";
@@ -105,13 +105,11 @@ function syncVolumeCallカンペ() {
     let gamePrefixKana = "";
 
     if (currentGame === 1) {
-        // ★第1ゲームの場合：公式戦モードが「OFF」かつ「1Gマッチではない」時だけ冠詞をつける
         if (!isOfficial && flowMaxGames > 1) {
             gamePrefixEn = "First game, ";
             gamePrefixKana = "ファーストゲーム、";
         }
     } else {
-        // 第2ゲーム以降は今まで通り冠詞をつける
         if (currentGame === flowMaxGames) {
             gamePrefixEn = "Final game, ";
             gamePrefixKana = "ファイナルゲーム、";
@@ -203,22 +201,58 @@ function syncVolumeCallカンペ() {
 // 試合開始前のロングコール画面 制御
 // =========================================
 
+function buildSideAnnouncement(isDouble, isTeam, p1Name, p2Name, t1Name, t2Name) {
+  let resEn = "";
+  let resKana = "";
+
+  if (isTeam) {
+    let mainTeam = t1Name || t2Name || "";
+    if (isDouble) {
+      resEn = `'${mainTeam}', represented by '${p1Name}' and '${p2Name}'`;
+      resKana = `『${mainTeam}』 リプリゼンティッド バイ 『${p1Name}』 アンド 『${p2Name}』`;
+    } else {
+      resEn = `'${mainTeam}', represented by '${p1Name}'`;
+      resKana = `『${mainTeam}』 リプリゼンティッド バイ 『${p1Name}』`;
+    }
+  } else {
+    if (!isDouble) {
+      let tStrEn = t1Name ? `, ${t1Name}` : "";
+      let tStrKana = t1Name ? `、${t1Name}` : "";
+      resEn = `'${p1Name}'${tStrEn}`;
+      resKana = `『${p1Name}』${tStrKana}`;
+    } else {
+      let hasT1 = (t1Name !== "");
+      let hasT2 = (t2Name !== "");
+      
+      if (hasT1 && hasT2 && t1Name !== t2Name) {
+        resEn = `'${p1Name}', ${t1Name} and '${p2Name}', ${t2Name}`;
+        resKana = `『${p1Name}』、${t1Name} アンド 『${p2Name}』、${t2Name}`;
+      } else if (hasT1 && hasT2 && t1Name === t2Name) {
+        resEn = `'${p1Name}' and '${p2Name}', ${t1Name}`;
+        resKana = `『${p1Name}』 アンド 『${p2Name}』、${t1Name}`;
+      } else if (hasT1 && !hasT2) {
+        resEn = `'${p1Name}', ${t1Name} and '${p2Name}'`;
+        resKana = `『${p1Name}』、${t1Name} アンド 『${p2Name}』`;
+      } else if (!hasT1 && hasT2) {
+        resEn = `'${p1Name}' and '${p2Name}', ${t2Name}`;
+        resKana = `『${p1Name}』 アンド 『${p2Name}』、${t2Name}`;
+      } else {
+        resEn = `'${p1Name}' and '${p2Name}'`;
+        resKana = `『${p1Name}』 アンド 『${p2Name}』`;
+      }
+    }
+  }
+  return { en: resEn, kana: resKana };
+}
+
 function showLongCallOverlay() {
   const overlay = document.getElementById("long-call-overlay");
   if (!overlay) return;
 
-  let rightTeamName = tR || "";
-  let leftTeamName = tL || "";
-  
-  let rightPlayersEn = flowIsDouble ? `'${nR1}' and '${nR2}'` : `'${nR1}'`;
-  let rightPlayersKana = flowIsDouble ? `『${nR1}』 アンド 『${nR2}』` : `『${nR1}』`;
-  let leftPlayersEn = flowIsDouble ? `'${nL1}' and '${nL2}'` : `'${nL1}'`;
-  let leftPlayersKana = flowIsDouble ? `『${nL1}』 アンド 『${nL2}』` : `『${nL1}』`;
-  
-  let rightTeamEn = rightTeamName ? `, ${rightTeamName}` : "";
-  let rightTeamKana = rightTeamName ? `、${rightTeamName}` : "";
-  let leftTeamEn = leftTeamName ? `, ${leftTeamName}` : "";
-  let leftTeamKana = leftTeamName ? `、${leftTeamName}` : "";
+  let isTeam = flowIsTeamMatch;
+
+  let rightAnnounce = buildSideAnnouncement(flowIsDouble, isTeam, nR1, nR2, tR1, tR2);
+  let leftAnnounce = buildSideAnnouncement(flowIsDouble, isTeam, nL1, nL2, tL1, tL2);
 
   let serverName = "";
   let receiverName = "";
@@ -240,8 +274,8 @@ function showLongCallOverlay() {
   let serveCallEn = flowIsDouble ? `'${serverName}' to serve to '${receiverName}'` : `'${serverName}' to serve`;
   let serveCallKana = flowIsDouble ? `『${serverName}』 トゥサーブ トゥ 『${receiverName}』` : `『${serverName}』 トゥサーブ`;
 
-  let callEn = `Ladies and Gentlemen;<br>on my right, ${rightPlayersEn}${rightTeamEn}; <br>and<br>on my left, ${leftPlayersEn}${leftTeamEn}.<br>${serveCallEn}; <br>Love All; Play.`;
-  let callKana = `レイディーズ アンド ジェントルメン、<br>オンマイライト、${rightPlayersKana}${rightTeamKana}、<br>アンド<br>オンマイレフト、${leftPlayersKana}${leftTeamKana}。<br>${serveCallKana}、<br>ラブオール；プレイ`;
+  let callEn = `Ladies and Gentlemen;<br>on my right, ${rightAnnounce.en}; <br>and<br>on my left, ${leftAnnounce.en}.<br>${serveCallEn}; <br>Love All; Play.`;
+  let callKana = `レイディーズ アンド ジェントルメン、<br>オンマイライト、${rightAnnounce.kana}、<br>アンド<br>オンマイレフト、${leftAnnounce.kana}。<br>${serveCallKana}、<br>ラブオール；プレイ`;
 
   document.getElementById("long-call-text-en").innerHTML = callEn;
   document.getElementById("long-call-text-kana").innerHTML = callKana;

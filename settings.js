@@ -32,9 +32,17 @@ function applySettings() {
   flowHasSetting = defaultSettings.hasSetting;
   flowHasCourtSelect = defaultSettings.hasCourtSelect !== undefined ? defaultSettings.hasCourtSelect : false;
   flowIsOfficialCall = defaultSettings.isOfficialCall !== undefined ? defaultSettings.isOfficialCall : true;
+  flowIsTeamMatch = defaultSettings.isTeamMatch !== undefined ? defaultSettings.isTeamMatch : false;
 
   resetWakeLockTimer();
-  if (typeof renderFlow === 'function') renderFlow();
+  
+  let boardUi = document.getElementById("board-ui");
+  let isPlaying = boardUi && (boardUi.style.display === "flex" || boardUi.style.display === "block");
+  
+  if (!isPlaying) {
+      if (typeof renderFlow === 'function') renderFlow();
+  }
+  
   if (typeof updateBoardFormatInfo === 'function') updateBoardFormatInfo();
 
   if (typeof saveActiveBackup === 'function') saveActiveBackup();
@@ -48,6 +56,13 @@ function renderSettingModal() {
 
   content.innerHTML = `
     <div style="overflow-y: auto; max-height: 50vh; display: flex; flex-direction: column; gap: 5px; width: 100%; padding-right: 4px; box-sizing: border-box;">
+      <div class="setting-row">
+        <div class="setting-label">大会種別</div>
+        <div class="toggle-group">
+          <button class="toggle-item ${!tempSettings.isTeamMatch ? 'selected' : ''}" onclick="updateTempSetting('isTeamMatch', false)">個人戦</button>
+          <button class="toggle-item ${tempSettings.isTeamMatch ? 'selected' : ''}" onclick="updateTempSetting('isTeamMatch', true)">団体戦</button>
+        </div>
+      </div>
       <div class="setting-row">
         <div class="setting-label">種目</div>
         <div class="toggle-group">

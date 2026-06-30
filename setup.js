@@ -12,6 +12,7 @@ let defaultSettings = {
   hasSetting: true,
   hasCourtSelect: true, 
   isOfficialCall: true, 
+  isTeamMatch: false,
   wakeLockMinutes: 3
 };
 
@@ -24,8 +25,10 @@ let flowHasInterval = true;
 let flowHasSetting = true;
 let flowHasCourtSelect = true;
 let flowIsOfficialCall = true; 
+let flowIsTeamMatch = false;
 
-let txtTL = ""; let txtTR = "";
+let txtTL1 = ""; let txtTL2 = "";
+let txtTR1 = ""; let txtTR2 = "";
 let txtPL1 = ""; let txtPL2 = "";
 let txtPR1 = ""; let txtPR2 = "";
 
@@ -40,21 +43,45 @@ function setIntervalOption(val) { flowHasInterval = val; renderFlow(); }
 function setSettingOpt(val) { flowHasSetting = val; renderFlow(); }
 function setCourtSelect(val) { flowHasCourtSelect = val; renderFlow(); }
 function setOfficialCall(val) { flowIsOfficialCall = val; renderFlow(); } 
+function setTeamMatch(val) { flowIsTeamMatch = val; renderFlow(); }
+
+// チーム1が入力された時、チーム2が空欄なら自動コピーする魔法の機能
+function autoCopyTeam(side) {
+  if (!flowIsDouble) return;
+  if (side === 'L') {
+    let t1 = document.getElementById("input-tl1");
+    let t2 = document.getElementById("input-tl2");
+    if (t1 && t2 && t1.value.trim() !== "" && t2.value.trim() === "") {
+      t2.value = t1.value;
+    }
+  } else if (side === 'R') {
+    let t1 = document.getElementById("input-tr1");
+    let t2 = document.getElementById("input-tr2");
+    if (t1 && t2 && t1.value.trim() !== "" && t2.value.trim() === "") {
+      t2.value = t1.value;
+    }
+  }
+}
 
 function flowNext() {
   if (flowStep === 1) {
     flowStep = 2;
     renderFlow();
   } else if (flowStep === 2) {
-    let tLVal = document.getElementById("input-tl").value.trim();
-    let tRVal = document.getElementById("input-tr").value.trim();
+    let tL1Val = document.getElementById("input-tl1").value.trim();
+    let tR1Val = document.getElementById("input-tr1").value.trim();
     let pL1Val = document.getElementById("input-pl1").value.trim();
     let pR1Val = document.getElementById("input-pr1").value.trim();
+    
+    let tL2Val = document.getElementById("input-tl2") ? document.getElementById("input-tl2").value.trim() : "";
+    let tR2Val = document.getElementById("input-tr2") ? document.getElementById("input-tr2").value.trim() : "";
     let pL2Val = document.getElementById("input-pl2") ? document.getElementById("input-pl2").value.trim() : "";
     let pR2Val = document.getElementById("input-pr2") ? document.getElementById("input-pr2").value.trim() : "";
 
-    txtTL = tLVal;
-    txtTR = tRVal;
+    txtTL1 = tL1Val;
+    txtTR1 = tR1Val;
+    txtTL2 = tL2Val;
+    txtTR2 = tR2Val;
 
     txtPL1 = pL1Val ? pL1Val : "PlayerA1";
     txtPR1 = pR1Val ? pR1Val : "PlayerB1";
@@ -82,14 +109,14 @@ function flowBack() {
 }
 
 function swapPlayersSides() {
-  const tlEl = document.getElementById("input-tl");
-  const trEl = document.getElementById("input-tr");
+  const tl1El = document.getElementById("input-tl1");
+  const tr1El = document.getElementById("input-tr1");
   const pl1El = document.getElementById("input-pl1");
   const pr1El = document.getElementById("input-pr1");
   
-  if (tlEl && trEl) {
-    let temp = tlEl.value; tlEl.value = trEl.value; trEl.value = temp;
-    txtTL = tlEl.value; txtTR = trEl.value;
+  if (tl1El && tr1El) {
+    let temp = tl1El.value; tl1El.value = tr1El.value; tr1El.value = temp;
+    txtTL1 = tl1El.value; txtTR1 = tr1El.value;
   }
   if (pl1El && pr1El) {
     let temp = pl1El.value; pl1El.value = pr1El.value; pr1El.value = temp;
@@ -97,8 +124,15 @@ function swapPlayersSides() {
   }
   
   if (flowIsDouble) {
+    const tl2El = document.getElementById("input-tl2");
+    const tr2El = document.getElementById("input-tr2");
     const pl2El = document.getElementById("input-pl2");
     const pr2El = document.getElementById("input-pr2");
+    
+    if (tl2El && tr2El) {
+      let temp = tl2El.value; tl2El.value = tr2El.value; tr2El.value = temp;
+      txtTL2 = tl2El.value; txtTR2 = tr2El.value;
+    }
     if (pl2El && pr2El) {
       let temp = pl2El.value; pl2El.value = pr2El.value; pr2El.value = temp;
       txtPL2 = pl2El.value; txtPR2 = pr2El.value;
@@ -135,11 +169,11 @@ function saveCurrentPlayersToRoster() {
     }
   };
 
-  addIfValid("input-pl1", "input-tl");
-  addIfValid("input-pr1", "input-tr");
+  addIfValid("input-pl1", "input-tl1");
+  addIfValid("input-pr1", "input-tr1");
   if (flowIsDouble) {
-    addIfValid("input-pl2", "input-tl");
-    addIfValid("input-pr2", "input-tr");
+    addIfValid("input-pl2", "input-tl2");
+    addIfValid("input-pr2", "input-tr2");
   }
 
   if (addedCount > 0) {
@@ -152,10 +186,13 @@ function saveCurrentPlayersToRoster() {
 }
 
 function previewAndGenerateStartQR() {
-  let tLVal = document.getElementById("input-tl").value.trim();
-  let tRVal = document.getElementById("input-tr").value.trim();
+  let tL1Val = document.getElementById("input-tl1").value.trim();
+  let tR1Val = document.getElementById("input-tr1").value.trim();
   let pL1Val = document.getElementById("input-pl1").value.trim() || "PlayerA1";
   let pR1Val = document.getElementById("input-pr1").value.trim() || "PlayerB1";
+  
+  let tL2Val = document.getElementById("input-tl2") ? document.getElementById("input-tl2").value.trim() : "";
+  let tR2Val = document.getElementById("input-tr2") ? document.getElementById("input-tr2").value.trim() : "";
   let pL2Val = document.getElementById("input-pl2") ? document.getElementById("input-pl2").value.trim() || "PlayerA2" : "";
   let pR2Val = document.getElementById("input-pr2") ? document.getElementById("input-pr2").value.trim() || "PlayerB2" : "";
 
@@ -166,15 +203,20 @@ function previewAndGenerateStartQR() {
   let settingStr = flowHasSetting ? `デュースあり(${deuceLimit})` : "デュースなし";
   
   let ruleStr = `${typeStr} / ${gameStr} / ${ptStr} / ${settingStr}`;
-  let leftTeamStr = tLVal ? `[${tLVal}] ` : "";
-  let rightTeamStr = tRVal ? `[${tRVal}] ` : "";
-  let leftPlayers = flowIsDouble ? `${pL1Val} & ${pL2Val}` : pL1Val;
-  let rightPlayers = flowIsDouble ? `${pR1Val} & ${pR2Val}` : pR1Val;
+  let matchTypeLabel = flowIsTeamMatch ? "団体戦" : "個人戦";
+  
+  let leftTeamStr1 = tL1Val ? `[${tL1Val}] ` : "";
+  let rightTeamStr1 = tR1Val ? `[${tR1Val}] ` : "";
+  let leftTeamStr2 = tL2Val ? `[${tL2Val}] ` : "";
+  let rightTeamStr2 = tR2Val ? `[${tR2Val}] ` : "";
+
+  let leftPlayers = flowIsDouble ? `${leftTeamStr1}${pL1Val} & ${leftTeamStr2}${pL2Val}` : `${leftTeamStr1}${pL1Val}`;
+  let rightPlayers = flowIsDouble ? `${rightTeamStr1}${pR1Val} & ${rightTeamStr2}${pR2Val}` : `${rightTeamStr1}${pR1Val}`;
 
   let confirmMsg = `以下の情報で本部用(開始)QRを発行しますか？\n\n` +
-                   `【ルール】\n${ruleStr}\n\n` +
-                   `【LEFT】\n${leftTeamStr}${leftPlayers}\n\n` +
-                   `【RIGHT】\n${rightTeamStr}${rightPlayers}`;
+                   `【ルール】\n${matchTypeLabel} / ${ruleStr}\n\n` +
+                   `【LEFT】\n${leftPlayers}\n\n` +
+                   `【RIGHT】\n${rightPlayers}`;
 
   if (confirm(confirmMsg)) {
     let matchData = {
@@ -185,8 +227,11 @@ function previewAndGenerateStartQR() {
       flowHasInterval: flowHasInterval,
       flowHasSetting: flowHasSetting,
       flowHasCourtSelect: flowHasCourtSelect,
-      tL: tLVal,
-      tR: tRVal,
+      flowIsTeamMatch: flowIsTeamMatch,
+      tL1: tL1Val,
+      tL2: tL2Val,
+      tR1: tR1Val,
+      tR2: tR2Val,
       n: [pL1Val, pL2Val, pR1Val, pR2Val]
     };
     if (typeof generateStartMatchQR === 'function') {

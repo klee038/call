@@ -11,7 +11,8 @@ function boardSave() {
   redoStack = []; 
   hist.push({
     sL: sL, sR: sR, gL: gL, gR: gR, srvL: srvL,
-    tL: tL, tR: tR, nL1: nL1, nL2: nL2, nR1: nR1, nR2: nR2,
+    tL1: tL1, tL2: tL2, tR1: tR1, tR2: tR2, 
+    nL1: nL1, nL2: nL2, nR1: nR1, nR2: nR2,
     pL1R: pL1IsRight, pR1R: pR1IsRight, iv: ivDoneInThisGame,
     al: annL, ar: annR, cL: shownCountL, cR: shownCountR,
     over: isOver, isr: isSelectingRoles, jai: justAfterInterval,
@@ -32,7 +33,8 @@ function boardUndo() {
   if (sL === 0 && sR === 0 && !isOver && !isSelectingRoles) {
     isSelectingRoles = true;
     
-    if (typeof Recorder !== 'undefined' && Recorder.data && Recorder.data.timeline) {
+    // 連打による空回りを防ぐため、配列にデータが残っている場合のみpopを実行する
+    if (typeof Recorder !== 'undefined' && Recorder.data && Array.isArray(Recorder.data.timeline) && Recorder.data.timeline.length > 0) {
         let lastLog = Recorder.data.timeline[Recorder.data.timeline.length - 1];
         if (lastLog && lastLog.type === 'SR') {
             Recorder.data.timeline.pop();
@@ -50,7 +52,8 @@ function boardUndo() {
 
   redoStack.push({
     sL: sL, sR: sR, gL: gL, gR: gR, srvL: srvL,
-    tL: tL, tR: tR, nL1: nL1, nL2: nL2, nR1: nR1, nR2: nR2,
+    tL1: tL1, tL2: tL2, tR1: tR1, tR2: tR2, 
+    nL1: nL1, nL2: nL2, nR1: nR1, nR2: nR2,
     pL1R: pL1IsRight, pR1R: pR1IsRight, iv: ivDoneInThisGame,
     al: annL, ar: annR, cL: shownCountL, cR: shownCountR,
     over: isOver, isr: isSelectingRoles, jai: justAfterInterval,
@@ -65,7 +68,11 @@ function boardUndo() {
 
   let l = hist.pop();
   sL = l.sL; sR = l.sR; gL = l.gL; gR = l.gR; srvL = l.srvL;
-  tL = l.tL; tR = l.tR; nL1 = l.nL1; nL2 = l.nL2; nR1 = l.nR1; nR2 = l.nR2;
+  tL1 = l.tL1 !== undefined ? l.tL1 : (l.tL || ""); 
+  tL2 = l.tL2 !== undefined ? l.tL2 : (l.tL || ""); 
+  tR1 = l.tR1 !== undefined ? l.tR1 : (l.tR || ""); 
+  tR2 = l.tR2 !== undefined ? l.tR2 : (l.tR || "");
+  nL1 = l.nL1; nL2 = l.nL2; nR1 = l.nR1; nR2 = l.nR2;
   pL1IsRight = l.pL1R; pR1IsRight = l.pR1R; ivDoneInThisGame = l.iv;
   annL = l.al; annR = l.ar; shownCountL = l.cL; shownCountR = l.cR;
   isOver = l.over; isSelectingRoles = l.isr; justAfterInterval = l.jai;
@@ -103,7 +110,8 @@ function boardRedo() {
   if (redoStack.length > 0) {
     hist.push({
       sL: sL, sR: sR, gL: gL, gR: gR, srvL: srvL,
-      tL: tL, tR: tR, nL1: nL1, nL2: nL2, nR1: nR1, nR2: nR2,
+      tL1: tL1, tL2: tL2, tR1: tR1, tR2: tR2, 
+      nL1: nL1, nL2: nL2, nR1: nR1, nR2: nR2,
       pL1R: pL1IsRight, pR1R: pR1IsRight, iv: ivDoneInThisGame,
       al: annL, ar: annR, cL: shownCountL, cR: shownCountR,
       over: isOver, isr: isSelectingRoles, jai: justAfterInterval,
@@ -118,7 +126,11 @@ function boardRedo() {
 
     let l = redoStack.pop();
     sL = l.sL; sR = l.sR; gL = l.gL; gR = l.gR; srvL = l.srvL;
-    tL = l.tL; tR = l.tR; nL1 = l.nL1; nL2 = l.nL2; nR1 = l.nR1; nR2 = l.nR2;
+    tL1 = l.tL1 !== undefined ? l.tL1 : (l.tL || ""); 
+    tL2 = l.tL2 !== undefined ? l.tL2 : (l.tL || ""); 
+    tR1 = l.tR1 !== undefined ? l.tR1 : (l.tR || ""); 
+    tR2 = l.tR2 !== undefined ? l.tR2 : (l.tR || "");
+    nL1 = l.nL1; nL2 = l.nL2; nR1 = l.nR1; nR2 = l.nR2;
     pL1IsRight = l.pL1R; pR1IsRight = l.pR1R; ivDoneInThisGame = l.iv;
     annL = l.al; annR = l.ar; shownCountL = l.cL; shownCountR = l.cR;
     isOver = l.over; isSelectingRoles = l.isr; justAfterInterval = l.jai;
@@ -170,8 +182,12 @@ function checkActiveBackupOnLoad() {
         let now = new Date();
         let dateStr = now.getFullYear() + '/' + ('0' + (now.getMonth() + 1)).slice(-2) + '/' + ('0' + now.getDate()).slice(-2) + ' ' + ('0' + now.getHours()).slice(-2) + ':' + ('0' + now.getMinutes()).slice(-2);
 
-        let teamLName = state.tL ? state.tL : (state.flowIsDouble ? `${state.nL1} & ${state.nL2}` : state.nL1);
-        let teamRName = state.tR ? state.tR : (state.flowIsDouble ? `${state.nR1} & ${state.nR2}` : state.nR1);
+        // 旧仕様互換のための結合
+        let tLCombined = state.tL !== undefined ? state.tL : ((state.tL1 === state.tL2 || !state.tL2) ? state.tL1 : `${state.tL1} / ${state.tL2}`);
+        let tRCombined = state.tR !== undefined ? state.tR : ((state.tR1 === state.tR2 || !state.tR2) ? state.tR1 : `${state.tR1} / ${state.tR2}`);
+
+        let teamLName = tLCombined ? tLCombined : (state.flowIsDouble ? `${state.nL1} & ${state.nL2}` : state.nL1);
+        let teamRName = tRCombined ? tRCombined : (state.flowIsDouble ? `${state.nR1} & ${state.nR2}` : state.nR1);
         let matchTitle = `${teamLName} vs ${teamRName}`;
 
         let matchScoreStr = `${state.gL} - ${state.gR}`;
@@ -229,8 +245,11 @@ function renderHistoryList() {
     let pL = st.nL1 ? (isD ? `${st.nL1} & ${st.nL2}` : st.nL1) : (match.title ? match.title.split(' vs ')[0] : "");
     let pR = st.nR1 ? (isD ? `${st.nR1} & ${st.nR2}` : st.nR1) : (match.title ? match.title.split(' vs ')[1] : "");
     
-    let tL = st.tL ? st.tL.trim() : "";
-    let tR = st.tR ? st.tR.trim() : "";
+    let tLCombined = st.tL !== undefined ? st.tL : ((st.tL1 === st.tL2 || !st.tL2) ? st.tL1 : `${st.tL1} / ${st.tL2}`);
+    let tRCombined = st.tR !== undefined ? st.tR : ((st.tR1 === st.tR2 || !st.tR2) ? st.tR1 : `${st.tR1} / ${st.tR2}`);
+    
+    let tL = tLCombined ? tLCombined.trim() : "";
+    let tR = tRCombined ? tRCombined.trim() : "";
 
     let teamLHtml = tL ? `<div style="font-size:12px; color:#94A3B8;">${tL}</div>` : "";
     let playerLHtml = `<div style="font-size:13px; color:#FFFFFF; font-weight:bold;">${pL}</div>`;
@@ -329,11 +348,18 @@ function resumeMatchFromState(state) {
   flowHasCE = state.hasOwnProperty('flowHasCE') ? state.flowHasCE : true;
   flowHasInterval = state.hasOwnProperty('flowHasInterval') ? state.flowHasInterval : true;
   flowHasSetting = state.hasOwnProperty('flowHasSetting') ? state.flowHasSetting : true;
+  flowIsTeamMatch = state.hasOwnProperty('flowIsTeamMatch') ? state.flowIsTeamMatch : false;
 
   sL = state.sL || 0; sR = state.sR || 0;
   gL = state.gL || 0; gR = state.gR || 0;
   srvL = state.hasOwnProperty('srvL') ? state.srvL : true;
-  tL = state.tL || ""; tR = state.tR || "";
+  
+  // 過去の1枠仕様(tL/tR)からの復元互換
+  tL1 = state.tL1 !== undefined ? state.tL1 : (state.tL || "");
+  tL2 = state.tL2 !== undefined ? state.tL2 : (state.tL || "");
+  tR1 = state.tR1 !== undefined ? state.tR1 : (state.tR || "");
+  tR2 = state.tR2 !== undefined ? state.tR2 : (state.tR || "");
+  
   nL1 = state.nL1 || ""; nL2 = state.nL2 || "";
   nR1 = state.nR1 || ""; nR2 = state.nR2 || "";
   pL1IsRight = state.hasOwnProperty('pL1IsRight') ? state.pL1IsRight : (state.hasOwnProperty('pL1R') ? state.pL1R : true);
@@ -346,7 +372,15 @@ function resumeMatchFromState(state) {
   annL = state.annL || (state.al || ""); annR = state.annR || (state.ar || "");
   shownCountL = state.shownCountL || (state.cL || 0); shownCountR = state.shownCountR || (state.cR || 0);
   justAfterInterval = state.justAfterInterval || (state.jai || false);
-  initialTL = state.initialTL || ""; initialTR = state.initialTR || ""; initialNL1 = state.initialNL1 || "";
+  
+  initialTL1 = state.initialTL1 !== undefined ? state.initialTL1 : (state.initialTL || ""); 
+  initialTL2 = state.initialTL2 !== undefined ? state.initialTL2 : (state.initialTL || ""); 
+  initialTR1 = state.initialTR1 !== undefined ? state.initialTR1 : (state.initialTR || ""); 
+  initialTR2 = state.initialTR2 !== undefined ? state.initialTR2 : (state.initialTR || ""); 
+  initialNL1 = state.initialNL1 || "";
+  initialNL2 = state.initialNL2 || "";
+  initialNR1 = state.initialNR1 || "";
+  initialNR2 = state.initialNR2 || "";
   
   matchScoreHistory = state.matchScoreHistory || [];
   matchDefaultRole = state.matchDefaultRole || {};
@@ -356,9 +390,6 @@ function resumeMatchFromState(state) {
     try { matchTimeline = JSON.parse(matchTimeline); } catch(e) { matchTimeline = []; }
   }
   
-  // ★大修正：ワープ直後の不要な `boardSave()` を削除。
-  // QRコードから届いた `hist` と `recorderData` をそのまま信じてセットするだけで、
-  // 戻るボタンもPDF機能も完璧に引き継がれ、空回りも一切起きないようになります。
   hist = state.hist || [];
   redoStack = state.redoStack || [];
 
@@ -367,7 +398,9 @@ function resumeMatchFromState(state) {
       if (state.recorderData) {
         Recorder.loadData(state.recorderData);
       } else {
-        Recorder.initMatch(flowIsDouble, tL, tR, nL1, nL2, nR1, nR2);
+        let oldTL = (tL1 === tL2 || !tL2) ? tL1 : `${tL1} / ${tL2}`;
+        let oldTR = (tR1 === tR2 || !tR2) ? tR1 : `${tR1} / ${tR2}`;
+        Recorder.initMatch(flowIsDouble, oldTL, oldTR, nL1, nL2, nR1, nR2);
       }
     } catch(e) {
       console.warn("Recorderデータの復元に失敗しました", e);
