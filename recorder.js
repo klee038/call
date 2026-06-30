@@ -29,6 +29,15 @@ const Recorder = {
   },
 
   recordFirstSR: function(gameIdx, serverName, receiverName) {
+    // 【修正箇所】末尾の記録を確認し、同じゲームの開始記録が連続する場合は重複（やり直し）とみなして削除
+    let timeline = this.data.timeline;
+    if (timeline.length > 0) {
+      let lastItem = timeline[timeline.length - 1];
+      if ((lastItem.type === 'SR' || lastItem.type === 'START_SERVER_RECEIVER') && lastItem.gameIdx === gameIdx) {
+        timeline.pop();
+      }
+    }
+
     this.data.timeline.push({
       type: 'SR',
       gameIdx: gameIdx,
